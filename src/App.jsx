@@ -40,12 +40,12 @@ const INVEST_UNIT = 5000000;
 // 3배 레버리지 헌법 적용: Banned 처리
 const TARGET_CONFIG = {
   'CORE': { label: '우량/눌림', strategy: 'DIP', maxRsi: 70 },
-  // 레버리지 종목별 진입 가이드 (전일 종가 기준 하락률)
+  // 레버리지 종목별 진입/익절 가이드 (단위: %)
   'LEVERAGE_RULES': {
-    'NVDL': { tiers: [{ label: '1차', drop: 0.06 }, { label: '2차', drop: 0.13 }] },
-    'TSLL': { tiers: [{ label: '1차', drop: 0.09 }, { label: '2차', drop: 0.16 }] },
-    'SOXL': { tiers: [{ label: '1차', drop: 0.07 }, { label: '2차', drop: 0.14 }] },
-    'TQQQ': { tiers: [{ label: '1차', drop: 0.05 }, { label: '2차', drop: 0.11 }] }
+    'SOXL': { buyDrop: -7, sellRise: 8 },
+    'TQQQ': { buyDrop: -5, sellRise: 6 },
+    'NVDL': { buyDrop: -6, sellRise: 10 },
+    'TSLL': { buyDrop: -9, sellRise: 12 }
   }
 };
 
@@ -534,10 +534,17 @@ export default function App() {
     const rsi = data.rsi || 50; // RSI 계산 필요
     const high = data.high || 0; // 전일 고가 필요 (API에서 가져와야 함)
 
-    // 1. 과열 체크
-    if (rsi > 70) return;
+    // 1. 과열 체크 (매도 신호)
+    if (rsi >= 75) {
+      // 30분에 한 번만 울리도록? (여기선 단순 트리거, triggerAlert 내부에서 쿨다운 처리됨)
+      if (apiStatus === 'connected' && stock.type !== 'WATCH') {
+        triggerAlert(stock.name, `🔥 [과열/매도] ${stock.name} RSI ${rsi.toFixed(0)} 도달! (익절 검토)`);
+      }
+      return; // 과열 시 매수 신호 체크 중단
+    }
 
-    // 2. 추세 체크 (20일선 위에 있는가?)
+    // 매수 진입은 RSI 70 미만일 때만
+    if (rsi > 70) return;
     // CORE는 "터치(눌림목)"이므로 20일선 근처여야 함 (예: MA20 * 0.98 ~ 1.02)
     // ALPHA는 "돌파"이므로 20일선 위에 있어야 함
     if (ma20 > 0) {
@@ -563,10 +570,19 @@ export default function App() {
             alertTriggered = true;
           }
         } else if (stock.type === 'LEVERAGE') {
-          // 돌파: 20일선 위에 있고, 전일 고가를 돌파했는가?
-          if (dist > 0 && dist < 0.05 && apiStatus === 'connected') {
-            if (data.change > 0) {
-              triggerAlert(stock.name, `🚀 [LEV/${label}] 20일선 위 상승세 (${label}: ${p.toFixed(2)})`);
+          // 사용자 지정 전략: 전일 대비 하락 시 진입(Dip), 목표 수익률 도달 시 익절
+          const rules = TARGET_CONFIG.LEVERAGE_RULES[stock.symbol];
+          if (rules) {
+            // 1. 매수(진입) 알람: 전일 대비 N% 이상 하락
+            // change는 퍼센트 단위 (예: -7.5)
+            if (data.change <= rules.buyDrop) {
+              triggerAlert(stock.name, `📉 [LEV/진입] ${stock.name} ${rules.buyDrop}% 도달! 현재 ${data.change.toFixed(2)}%`);
+              alertTriggered = true;
+            }
+            // 2. 익절(매도) 알람: 전일 대비 N% 이상 상승 (단타/데이)
+            // 또는 저점 대비 반등폭을 알 수 없으니, 일단 '목표 수익률'을 '당일 급등'으로 해석
+            else if (data.change >= rules.sellRise) {
+              triggerAlert(stock.name, `💰 [LEV/익절] ${stock.name} 목표 수익 +${rules.sellRise}% 달성! 현재 +${data.change.toFixed(2)}%`);
               alertTriggered = true;
             }
           }
@@ -937,14 +953,16 @@ export default function App() {
 
                   <div className="col-span-full mt-4 p-5 bg-slate-950/40 border border-indigo-500/30 rounded-3xl flex flex-col md:flex-row items-center justify-between gap-6 backdrop-blur-sm shadow-lg">
                     <div className="flex items-center gap-4">
-                      <div className="text-[10px] text-indigo-400 font-black uppercase tracking-[0.2em] border-r border-slate-700 pr-4 py-1">Trend Strategy</div>
-                      <div className="flex flex-col">
-                        <span className="text-xs font-bold text-slate-300">🚀 추세 추종 (돌파)</span>
-                        <span className="text-[10px] text-slate-500 font-mono">MA20 위 0~5% 상승 & 전일대비 상승 시 알람</span>
+                      <div className="text-[10px] text-indigo-400 font-black uppercase tracking-[0.2em] border-r border-slate-700 pr-4 py-1">Target Strategy</div>
+                      <div className="flex flex-col gap-1">
+                        <span className="text-xs font-bold text-slate-300">🎯 종목별 진입/익절 기준 (전일 대비)</span>
+                        <div className="grid grid-cols-2 gap-x-8 gap-y-1 text-[10px] text-slate-500 font-mono">
+                          <span>SOXL: -7% 진입 / +8% 익절</span>
+                          <span>TQQQ: -5% 진입 / +6% 익절</span>
+                          <span>NVDL: -6% 진입 / +10% 익절</span>
+                          <span>TSLL: -9% 진입 / +12% 익절</span>
+                        </div>
                       </div>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <span className="text-[10px] text-slate-500">※ RSI 70 이상 과열 시 경고 알람</span>
                     </div>
                   </div>
                 </>
