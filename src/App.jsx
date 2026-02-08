@@ -670,9 +670,20 @@ export default function App() {
               if (dist < 0) {
                 // 살짝 이탈은 제외하고 확실한 이탈(-0.5% 이상) 시
                 if (dist < -0.005) {
-                  triggerAlert(stock.name, `⚠️ [LEV/이탈] ${rules.critical_exit}`);
+                  triggerAlert(stock.name, `⚠️ [LEV/이탈] ${rules.critical_exit} (MA20: ${ma20.toLocaleString()})`);
                   alertTriggered = true;
                 }
+              }
+
+              // 1차/2차 매수 타점 도달 알람
+              if (rules.tiers) {
+                rules.tiers.forEach(tier => {
+                  const targetPrice = stock.prevClose * (1 - tier.drop);
+                  if (p <= targetPrice) {
+                    triggerAlert(stock.name, `💎 [LEV/매수] ${tier.label} 도달! (${p.toLocaleString()}원) <= 목표 ${targetPrice.toLocaleString()}원`);
+                    alertTriggered = true;
+                  }
+                });
               }
             }
           }
@@ -1286,6 +1297,7 @@ function StockCard({ stock, status }) {
           {TARGET_CONFIG.LEVERAGE_RULES[stock.symbol].critical_exit && (
             <div className="mt-1 p-1.5 bg-rose-500/10 rounded border border-rose-500/20 text-[9px] text-rose-300 text-center leading-tight font-bold">
               ⚠️ {TARGET_CONFIG.LEVERAGE_RULES[stock.symbol].critical_exit}
+              {stock.ma20 > 0 && <span className="block text-slate-400 font-mono mt-0.5">MA20: {stock.ma20.toLocaleString(undefined, { maximumFractionDigits: decimalPlaces })}</span>}
             </div>
           )}
 
