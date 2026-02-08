@@ -414,11 +414,11 @@ export default function App() {
     }
   };
 
-  // 20일 이동평균선(MA20) 실시간 계산
-  const fetchMA20 = async (symbol) => {
+  // 일봉 데이터 기반 지표 계산 (MA20, RSI)
+  const fetchDailyStats = async (symbol) => {
     try {
-      // 넉넉하게 2달치 일봉 데이터 요청 (정규장 데이터만 사용)
-      const url = getYahooUrl(`/v8/finance/chart/${symbol}?interval=1d&range=2mo&includePrePost=false`);
+      // 넉넉하게 6달치 일봉 데이터 요청 (RSI 정확도 향상 및 정규장 데이터만 사용)
+      const url = getYahooUrl(`/v8/finance/chart/${symbol}?interval=1d&range=6mo&includePrePost=false`);
       const response = await fetch(url);
       const resData = await response.json();
       const result = resData?.chart?.result?.[0];
@@ -446,17 +446,18 @@ export default function App() {
         }
       }
 
+
+
       // 데이터가 20개 미만이면 계산 불가
       if (validPrices.length < 20) return null;
 
-      if (validPrices.length < 20) {
-        return null; // 데이터 부족
-      }
-
       // 최근 20일치 평균 계산 (가장 최근 데이터 포함)
       const last20 = validPrices.slice(-20);
-      const sum = last20.reduce((a, b) => a + b, 0);
-      return sum / 20;
+      const ma20 = last20.reduce((a, b) => a + b, 0) / 20;
+
+      // RSI(14) 계산
+      const rsi = calculateRSI(validPrices, 14);
+      return { ma20, rsi: Math.round(rsi) };
     } catch (e) {
       console.error('MA20 Fetch Error:', symbol, e);
       return null;
@@ -504,15 +505,15 @@ export default function App() {
     let avgGain = gains / period;
     let avgLoss = losses / period;
 
-    // 이후 데이터로 스무딩
+    // 2. 이후 데이터로 스무딩 (Wilder's Smoothing)
     for (let i = period + 1; i < prices.length; i++) {
       const diff = prices[i] - prices[i - 1];
       if (diff >= 0) {
-        avgGain = (avgGain * (period - 1) + diff) / period;
+        avgGain = (avgGain * (period - 1) + diff) / period; // (이전 평균 * 13 + 현재 상승분) / 14
         avgLoss = (avgLoss * (period - 1)) / period;
       } else {
         avgGain = (avgGain * (period - 1)) / period;
-        avgLoss = (avgLoss * (period - 1) - diff) / period;
+        avgLoss = (avgLoss * (period - 1) - diff) / period; // diff는 음수이므로 -diff
       }
     }
 
@@ -679,9 +680,12 @@ export default function App() {
         marketState = data.marketState;
         history = data.history;
         // history 데이터를 이용해 RSI 및 MA20 직접 계산
-        const pricesForCalc = history.map(h => h.price);
-        rsi = calculateRSI(pricesForCalc);
-        ma20 = calculateSimpleMA(history, 20);
+        // 일봉 데이터로 지표(RSI, MA20) 계산/페칭
+        const stats = await fetchDailyStats(s.symbol);
+        if (stats) {
+          ma20 = stats.ma20 || 0;
+          rsi = stats.rsi || 50;
+        }
 
         // 순환매 감시
         checkSectorRotation(s.name, price, ma20, rsi, change);
@@ -718,22 +722,22 @@ export default function App() {
     updateMarketStatusRef.current();
     fetchPricesRef.current();
 
-    // 2. 초기 실행: 20일 이동평균선(MA20) 업데이트 (1회성)
-    const updateMA20 = async () => {
+    // 2. 초기 실행: 지표(MA20, RSI) 업데이트 (1회성)
+    const updateIndicators = async () => {
       const allSymbols = [...SYMBOLS.CORE, ...SYMBOLS.LEVERAGE];
-      const maUpdatePromises = allSymbols.map(async (s) => {
-        const ma20 = await fetchMA20(s.symbol);
-        return { symbol: s.symbol, ma20 };
+      const statsPromises = allSymbols.map(async (s) => {
+        const stats = await fetchDailyStats(s.symbol);
+        return { symbol: s.symbol, ...stats };
       });
 
-      const results = await Promise.all(maUpdatePromises);
+      const results = await Promise.all(statsPromises);
 
       setStocks(prev => prev.map(stock => {
-        const newMA = results.find(r => r.symbol === stock.symbol);
-        return newMA && newMA.ma20 ? { ...stock, ma20: newMA.ma20 } : stock;
+        const res = results.find(r => r.symbol === stock.symbol);
+        return res ? { ...stock, ma20: res.ma20, rsi: res.rsi } : stock;
       }));
     };
-    updateMA20();
+    updateIndicators();
 
     // 3. 초기 실행: 목표가(Target Price) 업데이트 (1회성)
     const updateTargetPrices = async () => {
