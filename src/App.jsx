@@ -417,8 +417,8 @@ export default function App() {
   // 20일 이동평균선(MA20) 실시간 계산
   const fetchMA20 = async (symbol) => {
     try {
-      // 넉넉하게 2달치 일봉 데이터 요청
-      const url = getYahooUrl(`/v8/finance/chart/${symbol}?interval=1d&range=2mo`);
+      // 넉넉하게 2달치 일봉 데이터 요청 (정규장 데이터만 사용)
+      const url = getYahooUrl(`/v8/finance/chart/${symbol}?interval=1d&range=2mo&includePrePost=false`);
       const response = await fetch(url);
       const resData = await response.json();
       const result = resData?.chart?.result?.[0];
@@ -429,7 +429,22 @@ export default function App() {
       const targetPrices = (adjClosePrices.length > 0 && adjClosePrices.some(p => p !== null)) ? adjClosePrices : closePrices;
 
       // 유효한 숫자 데이터만 필터링 (0 이하 제외)
-      const validPrices = targetPrices.filter(p => typeof p === 'number' && p > 0);
+      let validPrices = targetPrices.filter(p => typeof p === 'number' && p > 0);
+
+      // [한국 주식 보정] 차트 데이터에 오늘 날짜가 아직 안 들어왔을 경우 (지연 시세 등)
+      // 메타 데이터의 현재가를 강제로 추가하여 "실시간 MA20" 근사치 계산
+      if (symbol.includes('.KS')) {
+        const meta = result?.meta;
+        const timestamps = result?.timestamp || [];
+        const lastTime = timestamps[timestamps.length - 1];
+
+        // 오늘 자정 (한국 시간 고려해야 하지만 대략적으로 UTC 기준 비교)
+        // 86400초(1일) 이내 데이터가 없으면 오늘 데이터 누락으로 간주
+        const now = Math.floor(Date.now() / 1000);
+        if (meta?.regularMarketPrice > 0 && (!lastTime || (now - lastTime > 40000))) { // 장중인데 10시간 이상 차이나면
+          validPrices = [...validPrices, meta.regularMarketPrice];
+        }
+      }
 
       // 데이터가 20개 미만이면 계산 불가
       if (validPrices.length < 20) return null;
