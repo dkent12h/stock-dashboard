@@ -37,15 +37,42 @@ const FINNHUB_API_KEY = "d6431npr01ql6dj204agd6431npr01ql6dj204b0";
 const INITIAL_LIQUIDITY = 360000000;
 const INVEST_UNIT = 5000000;
 
-// 3배 레버리지 헌법 적용: Banned 처리
 const TARGET_CONFIG = {
   'CORE': { label: '우량/눌림', strategy: 'DIP', maxRsi: 70 },
-  // 레버리지 종목별 진입 가이드 (전일 종가 기준 하락률)
+  // 레버리지 종목별 상세 대응 전략 (사용자 정의)
   'LEVERAGE_RULES': {
-    'NVDL': { tiers: [{ label: '1차', drop: 0.06 }, { label: '2차', drop: 0.13 }] },
-    'TSLL': { tiers: [{ label: '1차', drop: 0.09 }, { label: '2차', drop: 0.16 }] },
-    'SOXL': { tiers: [{ label: '1차', drop: 0.07 }, { label: '2차', drop: 0.14 }] },
-    'TQQQ': { tiers: [{ label: '1차', drop: 0.05 }, { label: '2차', drop: 0.11 }] }
+    'SOXL': {
+      leverage: '3X',
+      take_profit: '+8% ~ +15%', // 1차 익절 구간
+      stop_loss: '-7%',          // 진입가 대비 강제 손절
+      critical_exit: '20일선 하향 이탈 시 전량 매도',
+      tp_threshold: 8,  // 알람용 숫자
+      sl_threshold: -7  // 알람용 숫자
+    },
+    'TQQQ': {
+      leverage: '3X',
+      take_profit: '+6% ~ +12%',
+      stop_loss: '-7%',
+      critical_exit: '20일선 종가 기준 이탈 시 즉시 매도',
+      tp_threshold: 6,
+      sl_threshold: -7
+    },
+    'NVDL': {
+      leverage: '2X',
+      take_profit: '+10% ~ +20%',
+      stop_loss: '-7%',
+      critical_exit: '엔비디아(NVDA) 본주가 20일선 이탈 시 동시 매도',
+      tp_threshold: 10,
+      sl_threshold: -7
+    },
+    'TSLL': {
+      leverage: '2X',
+      take_profit: '+12% ~ +20%',
+      stop_loss: '-7%',
+      critical_exit: '테슬라(TSLA) 본주가 20일선 이탈 시 즉시 전량 매도',
+      tp_threshold: 12,
+      sl_threshold: -7
+    }
   }
 };
 
@@ -617,12 +644,31 @@ export default function App() {
               alertTriggered = true;
             }
           } else if (stock.type === 'LEVERAGE') {
-            // 돌파: 20일선 위에 있고, 전일 고가를 돌파했는가? (약식: 현재가가 MA20 위)
-            if (dist > 0 && dist < 0.05 && apiStatus === 'connected') {
-              if (data.change > 0) {
-                // 이미 가지고 있다면 홀딩, 없다면 진입 타점
-                triggerAlert(stock.name, `🚀 [LEV/${label}] 20일선 위 상승세 (${label}: ${p.toLocaleString()})`);
+            const rules = TARGET_CONFIG.LEVERAGE_RULES[stock.symbol];
+
+            // 1. 기존 추세 돌파 알람 (진입)
+            if (dist > 0 && dist < 0.05 && data.change > 0 && apiStatus === 'connected') {
+              triggerAlert(stock.name, `🚀 [LEV/돌파] 20일선 위 상승세 (${data.change.toFixed(2)}%)`);
+              alertTriggered = true;
+            }
+
+            // 2. 사용자 정의 익절/손절 알람 (룰 기반)
+            if (rules && !alertTriggered) {
+              if (data.change >= rules.tp_threshold) {
+                triggerAlert(stock.name, `💰 [LEV/익절] 목표 구간 도달! (${rules.take_profit}) 현재 +${data.change.toFixed(2)}%`);
                 alertTriggered = true;
+              } else if (data.change <= rules.sl_threshold) {
+                triggerAlert(stock.name, `🛑 [LEV/손절] 손절 구간 도달! (${rules.stop_loss}) 현재 ${data.change.toFixed(2)}%`);
+                alertTriggered = true;
+              }
+
+              // 20일선 이탈 체크 (Critical Exit)
+              if (dist < 0) {
+                // 살짝 이탈은 제외하고 확실한 이탈(-0.5% 이상) 시
+                if (dist < -0.005) {
+                  triggerAlert(stock.name, `⚠️ [LEV/이탈] ${rules.critical_exit}`);
+                  alertTriggered = true;
+                }
               }
             }
           }
@@ -1216,19 +1262,28 @@ function StockCard({ stock, status }) {
         </div>
       </div>
 
-      {/* 진입 목표 가격 표시 (레버리지 탭 전용) */}
-      {leverageRule && prevClose > 0 && (
-        <div className="flex gap-2 mb-4">
-          {leverageRule.tiers.map((tier, i) => {
-            const targetPrice = prevClose * (1 - tier.drop);
-            const isReached = price <= targetPrice;
-            return (
-              <div key={i} className={`flex-1 px-3 py-2 rounded-xl border ${isReached ? 'bg-emerald-500/20 border-emerald-500/50 text-emerald-300' : 'bg-slate-950/30 border-slate-800 text-slate-500'}`}>
-                <div className="text-[9px] font-bold uppercase tracking-wider mb-0.5 opacity-80">{tier.label} Entry (-{Math.round(tier.drop * 100)}%)</div>
-                <div className="text-sm font-mono font-black">{targetPrice.toLocaleString(undefined, { minimumFractionDigits: decimalPlaces, maximumFractionDigits: decimalPlaces })}</div>
-              </div>
-            );
-          })}
+      {/* 레버리지 종목일 경우 전략 가이드 표시 */}
+      {stock.type === 'LEVERAGE' && TARGET_CONFIG.LEVERAGE_RULES[stock.symbol] && (
+        <div className="flex flex-col gap-2 mb-4 bg-slate-900/40 p-2.5 rounded-xl border border-slate-800">
+          <div className="flex justify-between items-center text-[9px] font-mono border-b border-slate-800 pb-1.5 mb-0.5">
+            <span className="text-slate-500 font-bold uppercase tracking-widest">Strategy</span>
+            <span className="text-indigo-400 font-black">{TARGET_CONFIG.LEVERAGE_RULES[stock.symbol].leverage || '2X'}</span>
+          </div>
+          <div className="grid grid-cols-2 gap-2 text-[10px]">
+            <div className="flex flex-col">
+              <span className="text-emerald-500 font-bold mb-0.5">Take Profit</span>
+              <span className="text-slate-300 font-mono tracking-tight">{TARGET_CONFIG.LEVERAGE_RULES[stock.symbol].take_profit}</span>
+            </div>
+            <div className="flex flex-col text-right">
+              <span className="text-rose-500 font-bold mb-0.5">Stop Loss</span>
+              <span className="text-slate-300 font-mono tracking-tight">{TARGET_CONFIG.LEVERAGE_RULES[stock.symbol].stop_loss}</span>
+            </div>
+          </div>
+          {TARGET_CONFIG.LEVERAGE_RULES[stock.symbol].critical_exit && (
+            <div className="mt-1 p-1.5 bg-rose-500/10 rounded border border-rose-500/20 text-[9px] text-rose-300 text-center leading-tight font-bold">
+              ⚠️ {TARGET_CONFIG.LEVERAGE_RULES[stock.symbol].critical_exit}
+            </div>
+          )}
         </div>
       )}
 
@@ -1613,8 +1668,8 @@ function PortfolioTable({ triggerAlert }) {
                 </td>
                 <td className="p-4 text-right">
                   <div className="text-white font-bold text-sm">{item.price > 0 ? item.price.toLocaleString(undefined, { maximumFractionDigits: item.category === 'CRYPTO' ? 2 : 0 }) : '-'}</div>
-                  <div className={`text-[10px] font-bold ${isUp ? 'text-rose-500' : 'text-indigo-400'}`}>
-                    {isUp ? '+' : ''}{item.change ? item.change.toFixed(2) : '0.00'}%
+                  <div className={`text-[10px] font-bold ${item.change > 0 ? 'text-rose-500' : (item.change < 0 ? 'text-indigo-400' : 'text-slate-400')}`}>
+                    {item.change > 0 ? '+' : ''}{item.change ? item.change.toFixed(2) : '0.00'}%
                   </div>
                 </td>
                 <td className="p-4 text-center">
