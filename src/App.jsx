@@ -1203,21 +1203,35 @@ function StockCard({ stock, status }) {
 }
 
 // 알림 권한 요청 버튼 컴포넌트
+// 알림 권한 요청 버튼 컴포넌트
 function NotificationButton() {
-  const [permission, setPermission] = useState(Notification.permission);
+  const [permission, setPermission] = useState(() => {
+    return (typeof Notification !== 'undefined') ? Notification.permission : 'denied';
+  });
 
   const requestPermission = async () => {
-    const result = await Notification.requestPermission();
-    setPermission(result);
-    if (result === 'granted') {
-      new Notification('알림 설정 완료', { body: '이제 중요한 시그널을 놓치지 마세요!' });
-      // 오디오 잠금 해제도 겸함
-      const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-      audioCtx.resume();
+    if (typeof Notification === 'undefined') return;
+    try {
+      const result = await Notification.requestPermission();
+      setPermission(result);
+      if (result === 'granted') {
+        new Notification('알림 설정 완료', { body: '이제 중요한 시그널을 놓치지 마세요!' });
+        // 오디오 잠금 해제도 겸함
+        try {
+          const AudioContext = window.AudioContext || window.webkitAudioContext;
+          if (AudioContext) {
+            const audioCtx = new AudioContext();
+            audioCtx.resume();
+          }
+        } catch (e) { console.error('Audio Init Failed', e); }
+      }
+    } catch (e) {
+      console.error('Notification Request Failed', e);
     }
   };
 
-  if (permission === 'granted') return null; // 이미 허용했으면 숨김
+  if (typeof Notification === 'undefined' || permission === 'granted') return null;
+
 
   return (
     <button
