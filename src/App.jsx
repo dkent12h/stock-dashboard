@@ -61,7 +61,7 @@ const PORTFOLIO_LIST = [
   { category: 'KR_CYCLE', name: 'Kodex 로봇액티브', symbol: '445290.KS', budget: '800만', buy: '20일선 상향 돌파 시', sell: '20일선 하향 이탈 시 익절' },
   { category: 'KR_CYCLE', name: 'Tiger 은행고배당플러스TOP10', symbol: '466940.KS', budget: '800만', buy: '20일선 상향 돌파 시', sell: '20일선 하향 이탈 시 익절' },
   { category: 'KR_CYCLE', name: 'Kodex K조선TOP10', symbol: '0115D0.KS', budget: '800만', buy: '20일선 상향 돌파 시', sell: '20일선 하향 이탈 시 익절' },
-  { category: 'KR_CYCLE', name: 'Tiger K방산', symbol: '465250.KS', budget: '800만', buy: '20일선 상향 돌파 시', sell: '20일선 하향 이탈 시 익절' },
+  { category: 'KR_CYCLE', name: 'Tiger K방산&우주', symbol: '463250.KS', budget: '800만', buy: '20일선 상향 돌파 시', sell: '20일선 하향 이탈 시 익절' },
   { category: 'KR_CYCLE', name: 'Tiger 바이오TOP10', symbol: '364970.KS', budget: '800만', buy: '20일선 상향 돌파 시', sell: '20일선 하향 이탈 시 익절' },
   { category: 'KR_CYCLE', name: 'Tiger 코리아원자력', symbol: '0091P0.KS', budget: '800만', buy: '20일선 상향 돌파 시', sell: '20일선 하향 이탈 시 익절' },
   { category: 'KR_SMALL', name: '아모텍 (052710)', symbol: '052710.KS', budget: '500만', buy: '20일선 상향 돌파 시', sell: '20일선 하향 이탈 시 손절/익절' },
