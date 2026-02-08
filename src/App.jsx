@@ -40,12 +40,12 @@ const INVEST_UNIT = 5000000;
 // 3배 레버리지 헌법 적용: Banned 처리
 const TARGET_CONFIG = {
   'CORE': { label: '우량/눌림', strategy: 'DIP', maxRsi: 70 },
-  // 레버리지 종목별 진입/익절 가이드 (단위: %)
+  // 레버리지 종목별 진입 가이드 (전일 종가 기준 하락률)
   'LEVERAGE_RULES': {
-    'SOXL': { buyDrop: -7, sellRise: 8 },
-    'TQQQ': { buyDrop: -5, sellRise: 6 },
-    'NVDL': { buyDrop: -6, sellRise: 10 },
-    'TSLL': { buyDrop: -9, sellRise: 12 }
+    'NVDL': { tiers: [{ label: '1차', drop: 0.06 }, { label: '2차', drop: 0.13 }] },
+    'TSLL': { tiers: [{ label: '1차', drop: 0.09 }, { label: '2차', drop: 0.16 }] },
+    'SOXL': { tiers: [{ label: '1차', drop: 0.07 }, { label: '2차', drop: 0.14 }] },
+    'TQQQ': { tiers: [{ label: '1차', drop: 0.05 }, { label: '2차', drop: 0.11 }] }
   }
 };
 
@@ -583,22 +583,13 @@ export default function App() {
               alertTriggered = true;
             }
           } else if (stock.type === 'LEVERAGE') {
-            // 사용자 지정 전략 (TARGET_CONFIG 참조)
-            const rules = TARGET_CONFIG?.LEVERAGE_RULES?.[stock.symbol];
-            if (rules) {
-              // 1. 매수(진입) 알람: 전일 대비 N% 이상 하락 (Dip Buying)
-              if (data.change <= rules.buyDrop) {
-                triggerAlert(stock.name, `📉 [LEV/진입] ${stock.name} ${rules.buyDrop}% 급락 발생! 현재 ${data.change?.toFixed(2)}%`);
+            // 돌파: 20일선 위에 있고, 전일 고가를 돌파했는가? (약식: 현재가가 MA20 위)
+            if (dist > 0 && dist < 0.05 && apiStatus === 'connected') {
+              if (data.change > 0) {
+                // 이미 가지고 있다면 홀딩, 없다면 진입 타점
+                triggerAlert(stock.name, `🚀 [LEV/${label}] 20일선 위 상승세 (${label}: ${p.toLocaleString()})`);
                 alertTriggered = true;
               }
-              // 2. 익절(매도) 알람: 전일 대비 N% 이상 상승 (Profit Taking)
-              else if (data.change >= rules.sellRise) {
-                triggerAlert(stock.name, `💰 [LEV/익절] ${stock.name} 목표 수익 +${rules.sellRise}% 달성! 현재 +${data.change?.toFixed(2)}%`);
-                alertTriggered = true;
-              }
-            } else {
-              // 규칙이 없는 레버리지 종목? (기존 돌파 전략 유지 or 패스)
-              // 일단 안전하게 패스
             }
           }
         }
@@ -970,16 +961,14 @@ export default function App() {
 
                   <div className="col-span-full mt-4 p-5 bg-slate-950/40 border border-indigo-500/30 rounded-3xl flex flex-col md:flex-row items-center justify-between gap-6 backdrop-blur-sm shadow-lg">
                     <div className="flex items-center gap-4">
-                      <div className="text-[10px] text-indigo-400 font-black uppercase tracking-[0.2em] border-r border-slate-700 pr-4 py-1">Target Strategy</div>
-                      <div className="flex flex-col gap-1">
-                        <span className="text-xs font-bold text-slate-300">🎯 종목별 진입/익절 기준 (전일 대비)</span>
-                        <div className="grid grid-cols-2 gap-x-8 gap-y-1 text-[10px] text-slate-500 font-mono">
-                          <span>SOXL: -7% 진입 / +8% 익절</span>
-                          <span>TQQQ: -5% 진입 / +6% 익절</span>
-                          <span>NVDL: -6% 진입 / +10% 익절</span>
-                          <span>TSLL: -9% 진입 / +12% 익절</span>
-                        </div>
+                      <div className="text-[10px] text-indigo-400 font-black uppercase tracking-[0.2em] border-r border-slate-700 pr-4 py-1">Trend Strategy</div>
+                      <div className="flex flex-col">
+                        <span className="text-xs font-bold text-slate-300">🚀 추세 추종 (돌파)</span>
+                        <span className="text-[10px] text-slate-500 font-mono">MA20 위 0~5% 상승 & 전일대비 상승 시 알람</span>
                       </div>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className="text-[10px] text-slate-500">※ RSI 70 이상 과열 시 경고 알람</span>
                     </div>
                   </div>
                 </>
