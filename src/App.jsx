@@ -50,7 +50,7 @@ const TARGET_CONFIG = {
 };
 
 const MARKET_INDICES = [
-  { id: 'K200F', name: '코스피 200 지수', symbol: '^KS200', base: 370.0, color: 'text-rose-400', stroke: '#fb7185' },
+  { id: 'K200F', name: '코스피 200 선물', symbol: 'KRW=X', base: 365.5, color: 'text-rose-400', stroke: '#fb7185' }, // 대용: KRW=X (환율) 혹은 ^KS200 (지수). 선물 데이터 ES=F 처럼 매핑
   { id: 'NDX', name: '나스닥 100 선물', symbol: 'NQ=F', base: 18250.0, color: 'text-indigo-400', stroke: '#818cf8' },
   { id: 'SPXF', name: 'S&P 500 선물', symbol: 'ES=F', base: 5120.0, color: 'text-emerald-400', stroke: '#34d399' }
 ];
