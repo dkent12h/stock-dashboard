@@ -925,6 +925,7 @@ export default function App() {
           </main>
         </div>
       </div>
+      <NotificationButton />
     </div>
   );
 }
@@ -1136,6 +1137,34 @@ function StockCard({ stock, status }) {
         </div>
       </div>
     </div>
+  );
+}
+
+// 알림 권한 요청 버튼 컴포넌트
+function NotificationButton() {
+  const [permission, setPermission] = useState(Notification.permission);
+
+  const requestPermission = async () => {
+    const result = await Notification.requestPermission();
+    setPermission(result);
+    if (result === 'granted') {
+      new Notification('알림 설정 완료', { body: '이제 중요한 시그널을 놓치지 마세요!' });
+      // 오디오 잠금 해제도 겸함
+      const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+      audioCtx.resume();
+    }
+  };
+
+  if (permission === 'granted') return null; // 이미 허용했으면 숨김
+
+  return (
+    <button
+      onClick={requestPermission}
+      className="fixed bottom-6 right-6 z-50 bg-indigo-600 hover:bg-indigo-500 text-white p-4 rounded-full shadow-2xl shadow-indigo-500/40 animate-bounce flex items-center justify-center transition-all active:scale-95"
+      aria-label="알림 켜기"
+    >
+      <Bell className="w-6 h-6 fill-current" />
+    </button>
   );
 }
 
