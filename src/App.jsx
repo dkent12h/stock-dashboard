@@ -420,8 +420,17 @@ export default function App() {
       // 넉넉하게 2년치 일봉 데이터 요청 (RSI 정확도 극대화 및 정규장 데이터만 사용)
       const url = getYahooUrl(`/v8/finance/chart/${symbol}?interval=1d&range=2y&includePrePost=false`);
       const response = await fetch(url);
+
+      if (!response.ok) {
+        console.warn(`Fetch Daily Stats Failed (${symbol}): ${response.status}`);
+        return null; // 실패 시 null 반환하여 안전하게 처리
+      }
+
       const resData = await response.json();
       const result = resData?.chart?.result?.[0];
+
+      if (!result) return null;
+
       const closePrices = result?.indicators?.quote?.[0]?.close || [];
       const adjClosePrices = result?.indicators?.adjclose?.[0]?.adjclose || [];
 
