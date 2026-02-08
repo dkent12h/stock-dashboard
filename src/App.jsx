@@ -931,9 +931,43 @@ export default function App() {
             <div className={`grid gap-8 ${currentTab === 'SECTOR' ? 'grid-cols-2 md:grid-cols-4' : 'grid-cols-1 md:grid-cols-2 xl:grid-cols-3'}`}>
               {(currentTab === 'INDEX') && indices.map(idx => <IndexCard key={idx.id} idx={idx} />)}
 
-              {(currentTab === 'LEVERAGE') && stocks.filter(s => s.type === 'LEVERAGE').map(stock => <StockCard key={stock.symbol} stock={stock} status={marketStatus} />)}
+              {(currentTab === 'LEVERAGE') && (
+                <>
+                  {stocks.filter(s => s.type === 'LEVERAGE').map(stock => <StockCard key={stock.symbol} stock={stock} status={marketStatus} />)}
 
-              {(currentTab === 'CORE') && stocks.filter(s => s.type === 'CORE').map(stock => <StockCard key={stock.symbol} stock={stock} status={marketStatus} />)}
+                  <div className="col-span-full mt-4 p-5 bg-slate-950/40 border border-indigo-500/30 rounded-3xl flex flex-col md:flex-row items-center justify-between gap-6 backdrop-blur-sm shadow-lg">
+                    <div className="flex items-center gap-4">
+                      <div className="text-[10px] text-indigo-400 font-black uppercase tracking-[0.2em] border-r border-slate-700 pr-4 py-1">Trend Strategy</div>
+                      <div className="flex flex-col">
+                        <span className="text-xs font-bold text-slate-300">🚀 추세 추종 (돌파)</span>
+                        <span className="text-[10px] text-slate-500 font-mono">MA20 위 0~5% 상승 & 전일대비 상승 시 알람</span>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className="text-[10px] text-slate-500">※ RSI 70 이상 과열 시 경고 알람</span>
+                    </div>
+                  </div>
+                </>
+              )}
+
+              {(currentTab === 'CORE') && (
+                <>
+                  {stocks.filter(s => s.type === 'CORE').map(stock => <StockCard key={stock.symbol} stock={stock} status={marketStatus} />)}
+
+                  <div className="col-span-full mt-4 p-5 bg-slate-950/40 border border-blue-500/30 rounded-3xl flex flex-col md:flex-row items-center justify-between gap-6 backdrop-blur-sm shadow-lg">
+                    <div className="flex items-center gap-4">
+                      <div className="text-[10px] text-blue-400 font-black uppercase tracking-[0.2em] border-r border-slate-700 pr-4 py-1">Dip Strategy</div>
+                      <div className="flex flex-col">
+                        <span className="text-xs font-bold text-slate-300">✨ 눌림목 매수 (분할)</span>
+                        <span className="text-[10px] text-slate-500 font-mono">MA20 ±2% 근접 & RSI 70 미만 시 알람</span>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className="text-[10px] text-slate-500">※ 우량주는 20일선이 강력한 지지선 역할</span>
+                    </div>
+                  </div>
+                </>
+              )}
 
 
               {(currentTab === 'SECTOR') && (
@@ -945,8 +979,10 @@ export default function App() {
                       <div className="text-[10px] text-indigo-400 font-black uppercase tracking-[0.2em] border-r border-slate-700 pr-4 py-1">Rotation Strategy</div>
                       <div className="flex items-center gap-2">
                         <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.5)]"></div>
-                        <span className="text-xs font-bold text-slate-300">길목 선취매</span>
-                        <span className="text-[10px] text-slate-500 font-mono">(RSI 40~60 & 20MA Supp)</span>
+                        <div className="flex flex-col">
+                          <span className="text-xs font-bold text-slate-300">순환매 길목</span>
+                          <span className="text-[10px] text-slate-500 font-mono">MA20 근처(-2%~+3%) & RSI 35~60</span>
+                        </div>
                       </div>
                     </div>
                     <div className="flex items-center gap-2 pr-2">
