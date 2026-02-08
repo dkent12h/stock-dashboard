@@ -528,66 +528,70 @@ export default function App() {
   // [과열] RSI 70 이하?
   // [지뢰] 실적발표 3일 전? (API 한계로 생략 가능, 수동 확인 필요 메시지)
   const checkBuySignal = (stock, data, ma20) => {
-    if (stock.banned || stock.type === 'WATCH') return; // 금지 품목 및 WATCH는 매수 신호 없음
+    try {
+      if (stock.banned || stock.type === 'WATCH') return; // 금지 품목 및 WATCH는 매수 신호 없음
 
-    const currentPrice = data.price;
-    const rsi = data.rsi || 50; // RSI 계산 필요
-    const high = data.high || 0; // 전일 고가 필요 (API에서 가져와야 함)
+      const currentPrice = data.price;
+      const rsi = data.rsi || 50; // RSI 계산 필요
+      const high = data.high || 0; // 전일 고가 필요 (API에서 가져와야 함)
 
-    // 1. 과열 체크 (매도 신호)
-    if (rsi >= 75) {
-      // 30분에 한 번만 울리도록? (여기선 단순 트리거, triggerAlert 내부에서 쿨다운 처리됨)
-      if (apiStatus === 'connected' && stock.type !== 'WATCH') {
-        triggerAlert(stock.name, `🔥 [과열/매도] ${stock.name} RSI ${rsi.toFixed(0)} 도달! (익절 검토)`);
+      // 1. 과열 체크 (매도 신호)
+      if (rsi >= 75) {
+        // 30분에 한 번만 울리도록? (여기선 단순 트리거, triggerAlert 내부에서 쿨다운 처리됨)
+        if (apiStatus === 'connected' && stock.type !== 'WATCH') {
+          triggerAlert(stock.name, `🔥 [과열/매도] ${stock.name} RSI ${rsi.toFixed(0)} 도달! (익절 검토)`);
+        }
+        return; // 과열 시 매수 신호 체크 중단
       }
-      return; // 과열 시 매수 신호 체크 중단
-    }
 
-    // 매수 진입은 RSI 70 미만일 때만
-    if (rsi > 70) return;
-    // CORE는 "터치(눌림목)"이므로 20일선 근처여야 함 (예: MA20 * 0.98 ~ 1.02)
-    // ALPHA는 "돌파"이므로 20일선 위에 있어야 함
-    if (ma20 > 0) {
-      // 정규장, Post, Pre 가격 모두 체크
-      const pricesToCheck = [
-        { p: data.price, label: '정규장' },
-        { p: data.postPrice, label: 'After' },
-        { p: data.prePrice, label: 'Pre' }
-      ].filter(item => item.p > 0 && typeof item.p === 'number');
+      // 매수 진입은 RSI 70 미만일 때만
+      if (rsi > 70) return;
+      // CORE는 "터치(눌림목)"이므로 20일선 근처여야 함 (예: MA20 * 0.98 ~ 1.02)
+      // ALPHA는 "돌파"이므로 20일선 위에 있어야 함
+      if (ma20 > 0) {
+        // 정규장, Post, Pre 가격 모두 체크
+        const pricesToCheck = [
+          { p: data.price, label: '정규장' },
+          { p: data.postPrice, label: 'After' },
+          { p: data.prePrice, label: 'Pre' }
+        ].filter(item => item.p > 0 && typeof item.p === 'number');
 
-      // 중복 알림 방지용 플래그
-      let alertTriggered = false;
+        // 중복 알림 방지용 플래그
+        let alertTriggered = false;
 
-      for (const { p, label } of pricesToCheck) {
-        if (alertTriggered) break; // 하나라도 걸리면 종료
+        for (const { p, label } of pricesToCheck) {
+          if (alertTriggered) break; // 하나라도 걸리면 종료
 
-        const dist = (p - ma20) / ma20;
+          const dist = (p - ma20) / ma20;
 
-        if (stock.type === 'CORE') {
-          // 눌림목: 20일선 부근 (-2% ~ +2%) 이면서 RSI가 낮을 때
-          if (dist > -0.02 && dist < 0.02) {
-            triggerAlert(stock.name, `✨ [CORE/${label}] 20일선 눌림목 터치 (MA20: ${ma20.toFixed(0)}, ${label}: ${p.toFixed(0)})`);
-            alertTriggered = true;
-          }
-        } else if (stock.type === 'LEVERAGE') {
-          // 사용자 지정 전략: 전일 대비 하락 시 진입(Dip), 목표 수익률 도달 시 익절
-          const rules = TARGET_CONFIG.LEVERAGE_RULES[stock.symbol];
-          if (rules) {
-            // 1. 매수(진입) 알람: 전일 대비 N% 이상 하락
-            // change는 퍼센트 단위 (예: -7.5)
-            if (data.change <= rules.buyDrop) {
-              triggerAlert(stock.name, `📉 [LEV/진입] ${stock.name} ${rules.buyDrop}% 도달! 현재 ${data.change.toFixed(2)}%`);
+          if (stock.type === 'CORE') {
+            // 눌림목: 20일선 부근 (-2% ~ +2%) 이면서 RSI가 낮을 때
+            if (dist > -0.02 && dist < 0.02) {
+              triggerAlert(stock.name, `✨ [CORE/${label}] 20일선 눌림목 터치 (MA20: ${ma20.toFixed(0)}, ${label}: ${p.toFixed(0)})`);
               alertTriggered = true;
             }
-            // 2. 익절(매도) 알람: 전일 대비 N% 이상 상승 (단타/데이)
-            // 또는 저점 대비 반등폭을 알 수 없으니, 일단 '목표 수익률'을 '당일 급등'으로 해석
-            else if (data.change >= rules.sellRise) {
-              triggerAlert(stock.name, `💰 [LEV/익절] ${stock.name} 목표 수익 +${rules.sellRise}% 달성! 현재 +${data.change.toFixed(2)}%`);
-              alertTriggered = true;
+          } else if (stock.type === 'LEVERAGE') {
+            // 사용자 지정 전략: 전일 대비 하락 시 진입(Dip), 목표 수익률 도달 시 익절
+            const rules = TARGET_CONFIG?.LEVERAGE_RULES?.[stock.symbol];
+            if (rules) {
+              // 1. 매수(진입) 알람: 전일 대비 N% 이상 하락
+              // change는 퍼센트 단위 (예: -7.5)
+              if (data.change <= rules.buyDrop) {
+                triggerAlert(stock.name, `📉 [LEV/진입] ${stock.name} ${rules.buyDrop}% 도달! 현재 ${data.change?.toFixed(2)}%`);
+                alertTriggered = true;
+              }
+              // 2. 익절(매도) 알람: 전일 대비 N% 이상 상승 (단타/데이)
+              // 또는 저점 대비 반등폭을 알 수 없으니, 일단 '목표 수익률'을 '당일 급등'으로 해석
+              else if (data.change >= rules.sellRise) {
+                triggerAlert(stock.name, `💰 [LEV/익절] ${stock.name} 목표 수익 +${rules.sellRise}% 달성! 현재 +${data.change?.toFixed(2)}%`);
+                alertTriggered = true;
+              }
             }
           }
         }
       }
+    } catch (e) {
+      console.error('Check Signal Error', e);
     }
   };
 
