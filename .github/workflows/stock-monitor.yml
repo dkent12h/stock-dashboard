@@ -1,0 +1,24 @@
+name: Stock Monitor
+
+on:
+  schedule:
+    # 평일(월~금) 매 15분마다 실행 (한국/미국 장 운영시간 모두 커버)
+    # GitHub Actions 시간은 UTC 기준입니다.
+    # */15 * * * 1-5
+    - cron: '*/15 * * * 1-5'
+  workflow_dispatch: # 수동 실행 버튼 (테스트용)
+
+jobs:
+  monitor:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: 18
+
+      - name: Run Monitor Script
+        run: node scripts/monitor.js
