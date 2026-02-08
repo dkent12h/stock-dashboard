@@ -47,7 +47,8 @@ const TARGET_CONFIG = {
       stop_loss: '-7%',          // 진입가 대비 강제 손절
       critical_exit: '20일선 하향 이탈 시 전량 매도',
       tp_threshold: 8,  // 알람용 숫자
-      sl_threshold: -7  // 알람용 숫자
+      sl_threshold: -7,  // 알람용 숫자
+      tiers: [{ label: '1차 진입', drop: 0.07 }, { label: '2차 추매', drop: 0.14 }]
     },
     'TQQQ': {
       leverage: '3X',
@@ -55,7 +56,8 @@ const TARGET_CONFIG = {
       stop_loss: '-7%',
       critical_exit: '20일선 종가 기준 이탈 시 즉시 매도',
       tp_threshold: 6,
-      sl_threshold: -7
+      sl_threshold: -7,
+      tiers: [{ label: '1차 진입', drop: 0.05 }, { label: '2차 추매', drop: 0.11 }]
     },
     'NVDL': {
       leverage: '2X',
@@ -63,7 +65,8 @@ const TARGET_CONFIG = {
       stop_loss: '-7%',
       critical_exit: '엔비디아(NVDA) 본주가 20일선 이탈 시 동시 매도',
       tp_threshold: 10,
-      sl_threshold: -7
+      sl_threshold: -7,
+      tiers: [{ label: '1차 진입', drop: 0.06 }, { label: '2차 추매', drop: 0.13 }]
     },
     'TSLL': {
       leverage: '2X',
@@ -71,7 +74,8 @@ const TARGET_CONFIG = {
       stop_loss: '-7%',
       critical_exit: '테슬라(TSLA) 본주가 20일선 이탈 시 즉시 전량 매도',
       tp_threshold: 12,
-      sl_threshold: -7
+      sl_threshold: -7,
+      tiers: [{ label: '1차 진입', drop: 0.09 }, { label: '2차 추매', drop: 0.16 }]
     }
   }
 };
@@ -281,19 +285,19 @@ export default function App() {
     const krMin = krNow.getMinutes();
     const krTotalMin = krHour * 60 + krMin;
 
-    // 미국 시간 (EST/EDT)
-    const usNow = new Date(now.toLocaleString("en-US", { timeZone: "America/New_York" }));
-    const usDay = usNow.getDay();
-    const usHour = usNow.getHours();
-    const usMin = usNow.getMinutes();
-    const usTotalMin = usHour * 60 + usMin;
-
     let krStatus = 'Closed';
     if (krDay >= 1 && krDay <= 5) {
       if (krTotalMin >= 480 && krTotalMin < 530) krStatus = 'NXT-Pre';
       else if (krTotalMin >= 540 && krTotalMin <= 930) krStatus = 'Regular';
       else if (krTotalMin > 930 && krTotalMin <= 1200) krStatus = 'NXT-After';
     }
+
+    // 미국 시간 (EST/EDT)
+    const usNow = new Date(now.toLocaleString("en-US", { timeZone: "America/New_York" }));
+    const usDay = usNow.getDay();
+    const usHour = usNow.getHours();
+    const usMin = usNow.getMinutes();
+    const usTotalMin = usHour * 60 + usMin;
 
     let usStatus = 'Closed';
     if (usDay >= 1 && usDay <= 5) {
@@ -1182,7 +1186,7 @@ function StockCard({ stock, status }) {
   const prevClose = stock?.prevClose || 0;
 
   // 레버리지 진입 가이드 (NVDL, TSLL 등)
-  const leverageRule = TARGET_CONFIG.LEVERAGE_RULES[stock?.name];
+  const leverageRule = TARGET_CONFIG.LEVERAGE_RULES[stock?.symbol];
 
   // 시그널 상태 판단
   let signal = null;
@@ -1282,6 +1286,26 @@ function StockCard({ stock, status }) {
           {TARGET_CONFIG.LEVERAGE_RULES[stock.symbol].critical_exit && (
             <div className="mt-1 p-1.5 bg-rose-500/10 rounded border border-rose-500/20 text-[9px] text-rose-300 text-center leading-tight font-bold">
               ⚠️ {TARGET_CONFIG.LEVERAGE_RULES[stock.symbol].critical_exit}
+            </div>
+          )}
+
+          {/* 1차/2차 매수 목표가 표시 (복원) */}
+          {TARGET_CONFIG.LEVERAGE_RULES[stock.symbol].tiers && prevClose > 0 && (
+            <div className="grid grid-cols-2 gap-2 mt-2 pt-2 border-t border-slate-800/50">
+              {TARGET_CONFIG.LEVERAGE_RULES[stock.symbol].tiers.map((tier, i) => {
+                const targetPrice = prevClose * (1 - tier.drop);
+                // 현재가가 목표가보다 낮거나 같으면(도달하면) 강조
+                const isReached = price <= targetPrice;
+                return (
+                  <div key={i} className={`px-2 py-1.5 rounded border ${isReached ? 'bg-emerald-500/20 border-emerald-500 text-emerald-300 animate-pulse' : 'bg-slate-950/50 border-slate-700/50 text-slate-500'}`}>
+                    <div className="text-[8px] uppercase font-bold opacity-70 mb-0.5 flex justify-between">
+                      <span>{tier.label}</span>
+                      <span>-{Math.round(tier.drop * 100)}%</span>
+                    </div>
+                    <div className="text-xs font-mono font-black tracking-tight">{targetPrice.toLocaleString(undefined, { maximumFractionDigits: 0 })}</div>
+                  </div>
+                );
+              })}
             </div>
           )}
         </div>
