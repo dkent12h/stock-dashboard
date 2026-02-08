@@ -417,8 +417,8 @@ export default function App() {
   // 일봉 데이터 기반 지표 계산 (MA20, RSI)
   const fetchDailyStats = async (symbol) => {
     try {
-      // 넉넉하게 6달치 일봉 데이터 요청 (RSI 정확도 향상 및 정규장 데이터만 사용)
-      const url = getYahooUrl(`/v8/finance/chart/${symbol}?interval=1d&range=6mo&includePrePost=false`);
+      // 넉넉하게 2년치 일봉 데이터 요청 (RSI 정확도 극대화 및 정규장 데이터만 사용)
+      const url = getYahooUrl(`/v8/finance/chart/${symbol}?interval=1d&range=2y&includePrePost=false`);
       const response = await fetch(url);
       const resData = await response.json();
       const result = resData?.chart?.result?.[0];
@@ -1269,13 +1269,28 @@ function SectorCard({ sector, status }) {
       </div>
 
       {rsi > 0 && (
-        <div className="w-full mt-4 pt-4 border-t border-slate-800/50 flex justify-between items-center px-2">
-          <span className="text-[9px] text-slate-500 font-bold uppercase tracking-widest">RSI (14)</span>
-          <div className="flex items-center gap-2">
-            <div className={`h-1.5 w-16 rounded-full bg-slate-800 overflow-hidden`}>
-              <div className={`h-full rounded-full ${rsi > 70 ? 'bg-amber-500' : rsi < 30 ? 'bg-emerald-500' : 'bg-indigo-500'}`} style={{ width: `${Math.min(rsi, 100)}%` }}></div>
+        <div className="w-full mt-4 pt-4 border-t border-slate-800/50 flex flex-col gap-2 px-2">
+          {/* MA20 표시 추가 */}
+          {ma20 > 0 && (
+            <div className="flex justify-between items-center text-[9px] font-mono">
+              <span className="text-slate-500 font-bold uppercase tracking-widest">MA(20)</span>
+              <div className="flex items-center gap-1.5">
+                <span className="text-slate-400 font-bold">{ma20.toLocaleString(undefined, { maximumFractionDigits: 0 })}</span>
+                <span className={`${price > ma20 ? 'text-emerald-400' : 'text-rose-400'} font-black`}>
+                  ({price > 0 ? ((price - ma20) / ma20 * 100).toFixed(1) : 0}%)
+                </span>
+              </div>
             </div>
-            <span className={`text-[10px] font-mono font-bold ${rsi > 70 ? 'text-amber-500' : 'text-slate-400'}`}>{rsi.toFixed(0)}</span>
+          )}
+
+          <div className="flex justify-between items-center">
+            <span className="text-[9px] text-slate-500 font-bold uppercase tracking-widest">RSI (14)</span>
+            <div className="flex items-center gap-2">
+              <div className={`h-1.5 w-16 rounded-full bg-slate-800 overflow-hidden`}>
+                <div className={`h-full rounded-full ${rsi > 70 ? 'bg-amber-500' : rsi < 30 ? 'bg-emerald-500' : 'bg-indigo-500'}`} style={{ width: `${Math.min(rsi, 100)}%` }}></div>
+              </div>
+              <span className={`text-[10px] font-mono font-bold ${rsi > 70 ? 'text-amber-500' : 'text-slate-400'}`}>{rsi.toFixed(0)}</span>
+            </div>
           </div>
         </div>
       )}
