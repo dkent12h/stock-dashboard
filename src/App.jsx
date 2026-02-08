@@ -74,14 +74,14 @@ const SYMBOLS = {
 
 // K방산 코드 수정: Tiger -> PLUS(ARIRANG)으로 변경하여 데이터 확보 우선
 const SECTOR_LIST = [
-  { symbol: '487240.KS', name: 'Kodex AI전력핵심설비', code: '487240' },
-  { symbol: '305720.KS', name: 'Kodex 2차전지산업', code: '305720' },
-  { symbol: '445290.KS', name: 'Kodex 로봇액티브', code: '445290' },
-  { symbol: '466940.KS', name: 'Tiger 은행고배당플러스TOP10', code: '466940' },
-  { symbol: '0115D0.KS', name: 'Kodex K조선TOP10', code: '0115D0' },
-  { symbol: '463250.KS', name: 'Tiger K방산&우주', code: '463250' },
-  { symbol: '364970.KS', name: 'Tiger 바이오TOP10', code: '364970' },
-  { symbol: '0091P0.KS', name: 'Tiger 코리아원자력', code: '0091P0' }
+  { symbol: '091160.KS', name: 'KODEX 반도체', code: '091160' },
+  { symbol: '305720.KS', name: 'KODEX 2차전지산업', code: '305720' },
+  { symbol: '091180.KS', name: 'KODEX 자동차', code: '091180' },
+  { symbol: '091170.KS', name: 'KODEX 은행', code: '091170' },
+  { symbol: '266420.KS', name: 'KODEX 헬스케어', code: '266420' },
+  { symbol: '139230.KS', name: 'TIGER 200중공업', code: '139230' }, // 조선 대표
+  { symbol: '429000.KS', name: 'ARIRANG K방산Fn', code: '429000' },
+  { symbol: '424260.KS', name: 'HANARO 원자력iSelect', code: '424260' }
 ];
 
 // --- 초기값 ---
@@ -1259,7 +1259,13 @@ function SectorCard({ sector, status }) {
 
       <div className="w-full pt-4">
         <p className="text-[10px] text-slate-600 font-black mb-1 tracking-[0.3em] uppercase group-hover:text-indigo-400 transition-colors">{sector?.code}</p>
-        <h3 className="text-[13px] font-black text-white leading-tight mb-3 h-8 flex items-center justify-center px-2">{sector?.name}</h3>
+        <h3
+          onClick={() => window.open(`https://alphasquare.co.kr/home/stock-information?code=${sector.code}`, '_blank')}
+          className="text-[13px] font-black text-white hover:text-indigo-400 cursor-pointer transition-colors leading-tight mb-3 h-8 flex items-center justify-center px-2 group-hover:scale-105 duration-300"
+          title="알파스퀘어 차트 보기"
+        >
+          {sector?.name}
+        </h3>
         <p className="text-xl font-mono font-black text-white mb-1">
           {price > 0 ? price.toLocaleString(undefined, { maximumFractionDigits: 0 }) : '---'}
         </p>
