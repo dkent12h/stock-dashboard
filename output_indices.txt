@@ -1,0 +1,5 @@
+﻿Checking Indices... [ 'NQ=F', 'ES=F', 'KRW=X', '^KS200' ]
+[NQ=F] Price: 25163.25, Time: 2026. 2. 7. ?ㅼ쟾 6:59:59
+[ES=F] Price: 6952.75, Time: 2026. 2. 7. ?ㅼ쟾 6:59:59
+[KRW=X] Price: 1463.33, Time: 2026. 2. 9. ?ㅼ쟾 12:44:51
+[^KS200] Price: 748.1, Time: 2026. 2. 6. ?ㅽ썑 6:05:35
