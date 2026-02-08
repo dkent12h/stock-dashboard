@@ -425,8 +425,11 @@ export default function App() {
       // 수정 종가(Adj Close)가 있으면 우선 사용 (가장 정확함)
       const targetPrices = (adjClosePrices.length > 0 && adjClosePrices.some(p => p !== null)) ? adjClosePrices : closePrices;
 
-      // 유효한 숫자 데이터만 필터링
-      const validPrices = targetPrices.filter(p => typeof p === 'number');
+      // 유효한 숫자 데이터만 필터링 (0 이하 제외)
+      const validPrices = targetPrices.filter(p => typeof p === 'number' && p > 0);
+
+      // 데이터가 20개 미만이면 계산 불가
+      if (validPrices.length < 20) return null;
 
       if (validPrices.length < 20) {
         return null; // 데이터 부족
