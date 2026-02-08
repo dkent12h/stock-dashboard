@@ -1055,7 +1055,7 @@ export default function App() {
 
               {(currentTab === 'PORTFOLIO') && (
                 <div className="col-span-full mt-4">
-                  <PortfolioTable />
+                  <PortfolioTable triggerAlert={triggerAlert} />
                   <div className="mt-6 p-5 bg-slate-950/40 border border-indigo-500/30 rounded-3xl flex flex-col md:flex-row items-center justify-between gap-6 backdrop-blur-sm shadow-lg">
                     <div className="flex items-center gap-4">
                       <div className="text-[10px] text-indigo-400 font-black uppercase tracking-[0.2em] border-r border-slate-700 pr-4 py-1">Portfolio Strategy</div>
@@ -1428,23 +1428,80 @@ function SectorCard({ sector, status }) {
   );
 }
 
-function PortfolioTable() {
+function PortfolioTable({ triggerAlert }) {
   const [data, setData] = useState([]);
   const [loading, setLoading] = useState(false);
+  const alertedRef = useRef(new Set()); // 중복 알람 방지
+
+  // 매수/매도 판단 로직
+  const evaluateAction = (item, price, ma20, rsi) => {
+    if (!price || !ma20) return { type: 'WAIT', label: '데이터 부족', color: 'bg-slate-800 text-slate-500' };
+
+    const dist = (price - ma20) / ma20; // 0.05 = 5%
+    const buyTxt = item.buy || '';
+    const sellTxt = item.sell || '';
+
+    // 1. 무조건 보유 (적립식, 장기)
+    if (buyTxt.includes('적립식') || buyTxt.includes('영구 보유') || item.category === 'US_CORE') {
+      return { type: 'HOLD', label: '장기 보유', color: 'bg-slate-700/50 text-slate-300 border border-slate-600' };
+    }
+
+    // 2. 가상자산 (변동성 큼)
+    if (item.category === 'CRYPTO') {
+      if (rsi > 75) return { type: 'SELL', label: '과열 익절', color: 'bg-indigo-500 text-white animate-pulse font-bold shadow-[0_0_10px_#6366f1]' };
+      if (dist < -0.05 && rsi < 40) return { type: 'BUY', label: '저점 매수', color: 'bg-rose-500 text-white animate-pulse font-bold shadow-[0_0_10px_#f43f5e]' };
+      return { type: 'HOLD', label: '홀딩', color: 'bg-slate-700 text-slate-300' };
+    }
+
+    // 3. 20일선 기준 전략 (Core, Cycle, Alpha)
+
+    // [매도/손절] 20일선 이탈
+    if (price < ma20) {
+      if (sellTxt.includes('이탈') || sellTxt.includes('손절')) {
+        // RSI 30 미만은 과매도라 '관망' (함부로 손절 X)
+        if (rsi < 30) return { type: 'WAIT', label: '과매도 관망', color: 'bg-slate-800 text-slate-400' };
+        // 하락폭이 작으면(-1% 이내) 속임수일 수 있음 -> 관망
+        if (dist > -0.01) return { type: 'WAIT', label: '이탈 주의', color: 'bg-amber-900/50 text-amber-500' };
+
+        return { type: 'SELL', label: '이탈 매도', color: 'bg-blue-600 text-white font-bold' };
+      }
+    }
+
+    // [매수/익절/홀딩] 20일선 위
+    if (price >= ma20) {
+      // 과열 익절 (RSI 75 이상 or 이격도 15% 이상)
+      if (rsi >= 75 || dist >= 0.15) {
+        return { type: 'SELL', label: '과열 익절', color: 'bg-indigo-500 text-white font-bold animate-pulse' };
+      }
+
+      // 매수 타점 (20일선 근처 + RSI 적정)
+      if (dist <= 0.03) { // 3% 이내
+        if (buyTxt.includes('돌파') || buyTxt.includes('지지') || buyTxt.includes('유지')) {
+          if (rsi < 70) {
+            return { type: 'BUY', label: '매수 기회', color: 'bg-rose-500 text-white font-bold animate-pulse shadow-[0_0_10px_#f43f5e]' };
+          }
+        }
+      }
+
+      // 그 외는 추세 추종 (홀딩)
+      return { type: 'HOLD', label: '추세 추종', color: 'bg-emerald-900/40 text-emerald-400 border border-emerald-500/30' };
+    }
+
+    return { type: 'WAIT', label: '관망', color: 'bg-slate-800 text-slate-500' };
+  };
 
   useEffect(() => {
     const loadData = async () => {
       setLoading(true);
       const results = await Promise.all(PORTFOLIO_LIST.map(async (item) => {
         try {
-          // 일봉 데이터 (MA20 계산용) - 3개월치만 요청
-          // /yahoo/v8/finance/... 직접 경로 사용
           const url = `/yahoo/v8/finance/chart/${item.symbol}?interval=1d&range=3mo&includePrePost=false`;
           const res = await fetch(url);
 
           let price = 0;
           let change = 0;
           let ma20 = 0;
+          let rsi = 50;
 
           if (res.ok) {
             const json = await res.json();
@@ -1456,18 +1513,45 @@ function PortfolioTable() {
               price = result.meta.regularMarketPrice;
               change = result.meta.regularMarketChangePercent || 0;
 
-              // MA20 계산
+              // MA20 & RSI 계산
               const validCloses = closes.filter(c => c !== null);
               if (validCloses.length >= 20) {
                 const slice = validCloses.slice(-20);
                 ma20 = slice.reduce((a, b) => a + b, 0) / 20;
+
+                // RSI (14) 약식 계산
+                if (validCloses.length > 15) {
+                  // 간단 RSI 로직 (정확도는 낮아도 추세 확인용)
+                  let gains = 0;
+                  let losses = 0;
+                  for (let i = validCloses.length - 14; i < validCloses.length; i++) {
+                    const diff = validCloses[i] - validCloses[i - 1];
+                    if (diff >= 0) gains += diff;
+                    else losses -= diff;
+                  }
+                  const rs = losses === 0 ? 100 : gains / losses;
+                  rsi = 100 - (100 / (1 + rs));
+                }
               }
             }
           }
-          return { ...item, price, change, ma20 };
+
+          const action = evaluateAction(item, price, ma20, rsi);
+
+          // 알람 트리거 (최초 1회 및 상태 변경 시)
+          // 여기선 간단하게 매수/매도 시그널 발생 시 알림
+          if (triggerAlert && (action.type === 'BUY' || action.type === 'SELL')) {
+            const key = `${item.symbol}-${action.type}`;
+            if (!alertedRef.current.has(key)) {
+              // 알람 발송
+              triggerAlert(item.name, `${action.type === 'BUY' ? '💎 [포트/매수]' : '💰 [포트/매도]'} ${item.name} : ${action.label} (현재가 ${price.toLocaleString()})`);
+              alertedRef.current.add(key);
+            }
+          }
+
+          return { ...item, price, change, ma20, rsi, action };
         } catch (e) {
-          console.error(`Portfolio Fetch Error (${item.symbol})`, e);
-          return { ...item, price: 0, change: 0, ma20: 0 };
+          return { ...item, price: 0, change: 0, ma20: 0, rsi: 0, action: { type: 'WAIT', label: '오류' } };
         }
       }));
       setData(results);
@@ -1477,7 +1561,7 @@ function PortfolioTable() {
     loadData();
     const interval = setInterval(loadData, 180000); // 3분 갱신
     return () => clearInterval(interval);
-  }, []);
+  }, [triggerAlert]);
 
   const getBadgeStyle = (cat) => {
     if (cat.includes('CORE')) return "bg-blue-900/40 text-blue-300 border-blue-500/30";
@@ -1492,14 +1576,14 @@ function PortfolioTable() {
 
   return (
     <div className="w-full overflow-x-auto rounded-3xl border border-slate-800/60 bg-slate-950/40 backdrop-blur-sm shadow-2xl scrollbar-hide">
-      <table className="w-full text-left border-collapse min-w-[1000px]">
+      <table className="w-full text-left border-collapse min-w-[1200px]">
         <thead>
           <tr className="text-[10px] text-slate-500 border-b border-slate-800/80 uppercase tracking-wider bg-slate-900/50">
             <th className="p-4 font-bold">Category</th>
             <th className="p-4 font-bold">Asset</th>
-            <th className="p-4 font-bold text-right">Budget</th>
+            <th className="p-4 font-bold text-center">Action</th>
             <th className="p-4 font-bold text-right">Price (Now)</th>
-            <th className="p-4 font-bold text-center">Trend (vs MA20)</th>
+            <th className="p-4 font-bold text-center">Trend (MA20)</th>
             <th className="p-4 font-bold">Buy Strategy</th>
             <th className="p-4 font-bold">Sell Strategy</th>
           </tr>
@@ -1508,7 +1592,6 @@ function PortfolioTable() {
           {data.map((item, idx) => {
             const isUp = item.change >= 0;
             const dist = item.ma20 > 0 ? ((item.price - item.ma20) / item.ma20 * 100) : 0;
-            const isTrendUp = item.price > item.ma20;
 
             return (
               <tr key={idx} className="border-b border-slate-800/30 hover:bg-slate-800/30 transition-colors group">
@@ -1521,7 +1604,13 @@ function PortfolioTable() {
                   {item.name}
                   <span className="block text-[9px] text-slate-500 font-normal mt-0.5">{item.symbol}</span>
                 </td>
-                <td className="p-4 text-right text-slate-400 font-bold">{item.budget}</td>
+                <td className="p-4 text-center">
+                  {item.action && (
+                    <span className={`px-3 py-1.5 rounded-full text-[10px] font-black tracking-widest ${item.action.color || 'bg-slate-800'}`}>
+                      {item.action.label}
+                    </span>
+                  )}
+                </td>
                 <td className="p-4 text-right">
                   <div className="text-white font-bold text-sm">{item.price > 0 ? item.price.toLocaleString(undefined, { maximumFractionDigits: item.category === 'CRYPTO' ? 2 : 0 }) : '-'}</div>
                   <div className={`text-[10px] font-bold ${isUp ? 'text-rose-500' : 'text-indigo-400'}`}>
@@ -1531,15 +1620,15 @@ function PortfolioTable() {
                 <td className="p-4 text-center">
                   {item.ma20 > 0 ? (
                     <div className="flex flex-col items-center gap-1">
-                      <span className={`px-2 py-0.5 rounded text-[10px] font-black ${isTrendUp ? 'bg-rose-500/10 text-rose-500' : 'bg-indigo-500/10 text-indigo-400'}`}>
-                        {dist > 0 ? '+' : ''}{dist.toFixed(1)}%
+                      <span className={`text-[10px] ${dist > 0 ? 'text-rose-400' : 'text-indigo-400'}`}>
+                        {dist > 0 ? '▲' : '▼'} {Math.abs(dist).toFixed(1)}%
                       </span>
                       <span className="text-[9px] text-slate-600">MA20: {item.ma20.toLocaleString(undefined, { maximumFractionDigits: 0 })}</span>
                     </div>
                   ) : <span className="text-slate-700">-</span>}
                 </td>
-                <td className="p-4 text-emerald-400/90 leading-relaxed font-bold max-w-[220px] text-[11px] whitespace-pre-wrap">{item.buy}</td>
-                <td className="p-4 text-rose-400/90 leading-relaxed font-bold max-w-[220px] text-[11px] whitespace-pre-wrap">{item.sell}</td>
+                <td className="p-4 text-emerald-400/90 leading-relaxed font-bold max-w-[220px] text-[11px] whitespace-pre-wrap opacity-70 group-hover:opacity-100 transition-opacity">{item.buy}</td>
+                <td className="p-4 text-rose-400/90 leading-relaxed font-bold max-w-[220px] text-[11px] whitespace-pre-wrap opacity-70 group-hover:opacity-100 transition-opacity">{item.sell}</td>
               </tr>
             );
           })}
