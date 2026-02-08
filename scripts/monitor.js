@@ -12,15 +12,15 @@ const SYMBOLS = [
     { symbol: 'SOXS', name: 'SOXS', type: 'LEVERAGE' },
     { symbol: 'TQQQ', name: 'TQQQ', type: 'LEVERAGE' },
     { symbol: 'SQQQ', name: 'SQQQ', type: 'LEVERAGE' },
-    // 8대 섹터 ETF (KODEX/TIGER 등 대표 종목으로 교체)
-    { symbol: '091160.KS', name: 'KODEX 반도체', type: 'SECTOR' },
-    { symbol: '305720.KS', name: 'KODEX 2차전지산업', type: 'SECTOR' },
-    { symbol: '091180.KS', name: 'KODEX 자동차', type: 'SECTOR' },
-    { symbol: '091170.KS', name: 'KODEX 은행', type: 'SECTOR' },
-    { symbol: '266420.KS', name: 'KODEX 헬스케어', type: 'SECTOR' },
-    { symbol: '139230.KS', name: 'TIGER 200중공업', type: 'SECTOR' },
-    { symbol: '429000.KS', name: 'ARIRANG K방산Fn', type: 'SECTOR' },
-    { symbol: '424260.KS', name: 'HANARO 원자력iSelect', type: 'SECTOR' }
+    // SECTORS
+    { symbol: '487240.KS', name: 'Kodex AI전력핵심설비', type: 'SECTOR' },
+    { symbol: '305720.KS', name: 'Kodex 2차전지산업', type: 'SECTOR' },
+    { symbol: '445290.KS', name: 'Kodex 로봇액티브', type: 'SECTOR' },
+    { symbol: '466940.KS', name: 'Tiger 은행고배당플러스TOP10', type: 'SECTOR' },
+    { symbol: '0115D0.KS', name: 'Kodex K조선TOP10', type: 'SECTOR' },
+    { symbol: '463250.KS', name: 'Tiger K방산&우주', type: 'SECTOR' },
+    { symbol: '364970.KS', name: 'Tiger 바이오TOP10', type: 'SECTOR' },
+    { symbol: '0091P0.KS', name: 'Tiger 코리아원자력', type: 'SECTOR' }
 ];
 
 async function sendMessage(text) {
