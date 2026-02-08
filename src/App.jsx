@@ -49,6 +49,40 @@ const TARGET_CONFIG = {
   }
 };
 
+// --- 포트폴리오 전략 데이터 (이미지 기반) ---
+const PORTFOLIO_LIST = [
+  // 국내 CORE
+  { category: 'KR_CORE', name: '삼성전자', symbol: '005930.KS', budget: '7,500만', buy: '20일선 지지 확인 시', sell: '이격도 15% 이상 시 일부 익절' },
+  { category: 'KR_CORE', name: 'SK하이닉스', symbol: '000660.KS', budget: '4,000만', buy: '83.5만(1차) / 20일선 탈환(2차)', sell: '20일선 종가 이탈 시 비중 축소' },
+  { category: 'KR_CORE', name: 'TIGER 200', symbol: '102110.KS', budget: '1,000만', buy: '영구 보유 (지수 추종)', sell: '무대응 (장기 방치형)' },
+  // 국내 순환매
+  { category: 'KR_CYCLE', name: 'KODEX 조선', symbol: '0115D0.KS', budget: '800만', buy: '20일선 상향 돌파 시', sell: '20일선 하향 이탈 시 익절' },
+  { category: 'KR_CYCLE', name: 'KODEX 미국AI전력', symbol: '487240.KS', budget: '800만', buy: '20일선 상향 돌파 시', sell: '20일선 하향 이탈 시 익절' },
+  { category: 'KR_CYCLE', name: 'TIGER 원자력', symbol: '0091P0.KS', budget: '800만', buy: '20일선 상향 돌파 시', sell: '20일선 하향 이탈 시 익절' },
+  { category: 'KR_CYCLE', name: 'KODEX K-방산', symbol: '0080G0.KS', budget: '800만', buy: '20일선 상향 돌파 시', sell: '20일선 하향 이탈 시 익절' },
+  { category: 'KR_CYCLE', name: 'KODEX 은행', symbol: '091170.KS', budget: '800만', buy: '20일선 상향 돌파 시', sell: '20일선 하향 이탈 시 익절' },
+  { category: 'KR_CYCLE', name: 'KODEX 로봇', symbol: '445290.KS', budget: '800만', buy: '20일선 상향 돌파 시', sell: '20일선 하향 이탈 시 익절' },
+  { category: 'KR_CYCLE', name: 'TIGER 2차전지소재', symbol: '462010.KS', budget: '800만', buy: '20일선 상향 돌파 시', sell: '20일선 하향 이탈 시 익절' },
+  { category: 'KR_CYCLE', name: 'TIGER 헬스케어', symbol: '143860.KS', budget: '800만', buy: '20일선 상향 돌파 시', sell: '20일선 하향 이탈 시 익절' },
+  { category: 'KR_SMALL', name: '아모텍 (052710)', symbol: '052710.KS', budget: '500만', buy: '20일선 상향 돌파 시', sell: '20일선 하향 이탈 시 손절/익절' },
+  // 미국 ALPHA
+  { category: 'US_ALPHA', name: '엔비디아 (NVDA)', symbol: 'NVDA', budget: '3,000만', buy: '20일선 위 유지 시', sell: '실적 발표 전 20일선 이탈 시 매도' },
+  { category: 'US_ALPHA', name: 'ARM 홀딩스 (ARM)', symbol: 'ARM', budget: '2,000만', buy: '20일선 눌림목마다 10주씩', sell: '본전 무관 추세 이탈 시 손절' },
+  { category: 'US_ALPHA', name: 'MSFT', symbol: 'MSFT', budget: '1,500만', buy: '20일선 위 유지 시', sell: '20일선 이탈 시 비중 50% 축소' },
+  { category: 'US_ALPHA', name: '구글 (GOOGL)', symbol: 'GOOGL', budget: '1,000만', buy: '20일선($333) 탈환 확인 시', sell: '현재 하락 추세이므로 관망' },
+  { category: 'US_ALPHA', name: 'POWR (전력 ETF)', symbol: 'POWR', budget: '1,500만', buy: '20일선 상향 돌파 시', sell: '섹터 과열 혹은 20일선 이탈 시' },
+  // 미국 CORE
+  { category: 'US_CORE', name: 'VOO (S&P500)', symbol: 'VOO', budget: '1,000만', buy: '적립식 장기 보유', sell: '장기 우상향 신뢰 및 보유' },
+  { category: 'US_CORE', name: 'QQQM (나스닥100)', symbol: 'QQQM', budget: '1,000만', buy: '적립식 장기 보유', sell: '장기 우상향 신뢰 및 보유' },
+  { category: 'US_CORE', name: 'SOXX (반도체)', symbol: 'SOXX', budget: '1,000만', buy: '적립식 장기 보유', sell: '장기 우상향 신뢰 및 보유' },
+  // 안전 / 기타
+  { category: 'SAFE', name: 'TLT (미국장기채)', symbol: 'TLT', budget: '1,000만', buy: '20일선 상향 돌파 시', sell: '금리 인하 종료 시점/20일선 이탈' },
+  { category: 'CRYPTO', name: '비트코인 (BTC)', symbol: 'BTC-USD', budget: '1,000만', buy: '$6.7만 / $8.6만 분할 매수', sell: '20일선 하향 이탈 시 기계적 매도' },
+  { category: 'SAFE', name: 'IAU (금)', symbol: 'IAU', budget: '1,500만', buy: '적립식 보험 성격 보유', sell: '보험용으로 유지' },
+  { category: 'SAFE', name: 'SLV (은)', symbol: 'SLV', budget: '600만', buy: '20일선 상향 돌파 시', sell: '이격 과다 시 스윙 익절' },
+  { category: 'CASH', name: 'SGOV / KOFR', symbol: 'SGOV', budget: '500만', buy: '상시 대기 (이자 수취)', sell: '시장 폭락 시 CORE(삼전/닉스) 투입' }
+];
+
 const MARKET_INDICES = [
   { id: 'K200F', name: '코스피 200 선물', symbol: 'KRW=X', base: 365.5, color: 'text-rose-400', stroke: '#fb7185' }, // 대용: KRW=X (환율) 혹은 ^KS200 (지수). 선물 데이터 ES=F 처럼 매핑
   { id: 'NDX', name: '나스닥 100 선물', symbol: 'NQ=F', base: 18250.0, color: 'text-indigo-400', stroke: '#818cf8' },
@@ -936,7 +970,8 @@ export default function App() {
                 { id: 'INDEX', label: '시장 지수', icon: LineChartIcon },
                 { id: 'LEVERAGE', label: '레버리지', icon: Layers },
                 { id: 'CORE', label: '반도체 CORE', icon: ShieldCheck },
-                { id: 'SECTOR', label: '국내 8대 섹터', icon: Coins }
+                { id: 'SECTOR', label: '국내 8대 섹터', icon: Coins },
+                { id: 'PORTFOLIO', label: '전체 포트폴리오', icon: Layers } // PORTFOLIO 탭 추가
               ].map(tab => {
                 const Icon = tab.icon;
                 return (
@@ -1016,6 +1051,21 @@ export default function App() {
                     </div>
                   </div>
                 </>
+              )}
+
+              {(currentTab === 'PORTFOLIO') && (
+                <div className="col-span-full mt-4">
+                  <PortfolioTable />
+                  <div className="mt-6 p-5 bg-slate-950/40 border border-indigo-500/30 rounded-3xl flex flex-col md:flex-row items-center justify-between gap-6 backdrop-blur-sm shadow-lg">
+                    <div className="flex items-center gap-4">
+                      <div className="text-[10px] text-indigo-400 font-black uppercase tracking-[0.2em] border-r border-slate-700 pr-4 py-1">Portfolio Strategy</div>
+                      <div className="flex flex-col">
+                        <span className="text-xs font-bold text-slate-300">📊 전체 포트폴리오 관리</span>
+                        <span className="text-[10px] text-slate-500 font-mono">종목별 기술적 지표(MA20, 이격도) 실시간 모니터링</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
               )}
 
 
@@ -1374,6 +1424,127 @@ function SectorCard({ sector, status }) {
           </div>
         </div>
       )}
+    </div>
+  );
+}
+
+function PortfolioTable() {
+  const [data, setData] = useState([]);
+  const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    const loadData = async () => {
+      setLoading(true);
+      const results = await Promise.all(PORTFOLIO_LIST.map(async (item) => {
+        try {
+          // 일봉 데이터 (MA20 계산용) - 3개월치만 요청
+          // /yahoo/v8/finance/... 직접 경로 사용
+          const url = `/yahoo/v8/finance/chart/${item.symbol}?interval=1d&range=3mo&includePrePost=false`;
+          const res = await fetch(url);
+
+          let price = 0;
+          let change = 0;
+          let ma20 = 0;
+
+          if (res.ok) {
+            const json = await res.json();
+            const result = json?.chart?.result?.[0];
+
+            if (result) {
+              const quote = result.indicators.quote[0];
+              const closes = quote.close || [];
+              price = result.meta.regularMarketPrice;
+              change = result.meta.regularMarketChangePercent || 0;
+
+              // MA20 계산
+              const validCloses = closes.filter(c => c !== null);
+              if (validCloses.length >= 20) {
+                const slice = validCloses.slice(-20);
+                ma20 = slice.reduce((a, b) => a + b, 0) / 20;
+              }
+            }
+          }
+          return { ...item, price, change, ma20 };
+        } catch (e) {
+          console.error(`Portfolio Fetch Error (${item.symbol})`, e);
+          return { ...item, price: 0, change: 0, ma20: 0 };
+        }
+      }));
+      setData(results);
+      setLoading(false);
+    };
+
+    loadData();
+    const interval = setInterval(loadData, 180000); // 3분 갱신
+    return () => clearInterval(interval);
+  }, []);
+
+  const getBadgeStyle = (cat) => {
+    if (cat.includes('CORE')) return "bg-blue-900/40 text-blue-300 border-blue-500/30";
+    if (cat.includes('ALPHA')) return "bg-indigo-900/40 text-indigo-300 border-indigo-500/30";
+    if (cat.includes('CYCLE')) return "bg-emerald-900/40 text-emerald-300 border-emerald-500/30";
+    if (cat === 'CRYPTO') return "bg-amber-900/40 text-amber-300 border-amber-500/30";
+    if (cat === 'SAFE') return "bg-slate-700/40 text-slate-300 border-slate-500/30";
+    return "bg-slate-800 text-slate-400";
+  };
+
+  if (loading && data.length === 0) return <div className="text-center p-20 text-slate-500 animate-pulse font-mono text-sm">LOADING STRATEGY DATA...</div>;
+
+  return (
+    <div className="w-full overflow-x-auto rounded-3xl border border-slate-800/60 bg-slate-950/40 backdrop-blur-sm shadow-2xl scrollbar-hide">
+      <table className="w-full text-left border-collapse min-w-[1000px]">
+        <thead>
+          <tr className="text-[10px] text-slate-500 border-b border-slate-800/80 uppercase tracking-wider bg-slate-900/50">
+            <th className="p-4 font-bold">Category</th>
+            <th className="p-4 font-bold">Asset</th>
+            <th className="p-4 font-bold text-right">Budget</th>
+            <th className="p-4 font-bold text-right">Price (Now)</th>
+            <th className="p-4 font-bold text-center">Trend (vs MA20)</th>
+            <th className="p-4 font-bold">Buy Strategy</th>
+            <th className="p-4 font-bold">Sell Strategy</th>
+          </tr>
+        </thead>
+        <tbody className="text-xs font-mono">
+          {data.map((item, idx) => {
+            const isUp = item.change >= 0;
+            const dist = item.ma20 > 0 ? ((item.price - item.ma20) / item.ma20 * 100) : 0;
+            const isTrendUp = item.price > item.ma20;
+
+            return (
+              <tr key={idx} className="border-b border-slate-800/30 hover:bg-slate-800/30 transition-colors group">
+                <td className="p-4">
+                  <span className={`text-[9px] px-2 py-1 rounded border uppercase font-bold tracking-wider ${getBadgeStyle(item.category)}`}>
+                    {item.category.replace('_', ' ')}
+                  </span>
+                </td>
+                <td className="p-4 font-bold text-slate-200">
+                  {item.name}
+                  <span className="block text-[9px] text-slate-500 font-normal mt-0.5">{item.symbol}</span>
+                </td>
+                <td className="p-4 text-right text-slate-400 font-bold">{item.budget}</td>
+                <td className="p-4 text-right">
+                  <div className="text-white font-bold text-sm">{item.price > 0 ? item.price.toLocaleString(undefined, { maximumFractionDigits: item.category === 'CRYPTO' ? 2 : 0 }) : '-'}</div>
+                  <div className={`text-[10px] font-bold ${isUp ? 'text-rose-500' : 'text-indigo-400'}`}>
+                    {isUp ? '+' : ''}{item.change ? item.change.toFixed(2) : '0.00'}%
+                  </div>
+                </td>
+                <td className="p-4 text-center">
+                  {item.ma20 > 0 ? (
+                    <div className="flex flex-col items-center gap-1">
+                      <span className={`px-2 py-0.5 rounded text-[10px] font-black ${isTrendUp ? 'bg-rose-500/10 text-rose-500' : 'bg-indigo-500/10 text-indigo-400'}`}>
+                        {dist > 0 ? '+' : ''}{dist.toFixed(1)}%
+                      </span>
+                      <span className="text-[9px] text-slate-600">MA20: {item.ma20.toLocaleString(undefined, { maximumFractionDigits: 0 })}</span>
+                    </div>
+                  ) : <span className="text-slate-700">-</span>}
+                </td>
+                <td className="p-4 text-emerald-400/90 leading-relaxed font-bold max-w-[220px] text-[11px] whitespace-pre-wrap">{item.buy}</td>
+                <td className="p-4 text-rose-400/90 leading-relaxed font-bold max-w-[220px] text-[11px] whitespace-pre-wrap">{item.sell}</td>
+              </tr>
+            );
+          })}
+        </tbody>
+      </table>
     </div>
   );
 }
