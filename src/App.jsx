@@ -1124,26 +1124,37 @@ function StockCard({ stock, status }) {
             {price > 0 ? price.toLocaleString(undefined, { minimumFractionDigits: decimalPlaces, maximumFractionDigits: decimalPlaces }) : '---'}
           </p>
 
-          {/* 시간외 가격 표시 (Post/Pre) - 정규장 가격과 다를 때만 표시 */}
-          {(stock.postPrice || stock.prePrice) && (
-            <div className="flex flex-col items-start mt-1 gap-0.5">
-              {stock.postPrice && stock.postPrice !== price && (
-                <div className="text-[10px] font-mono text-purple-400 flex items-center gap-1 animate-pulse">
-                  <span className="opacity-70 uppercase font-bold tracking-wider">After</span>
-                  <span className="font-black">{stock.postPrice.toLocaleString(undefined, { minimumFractionDigits: decimalPlaces, maximumFractionDigits: decimalPlaces })}</span>
-                  <span className={`text-[9px] ${stock.postPrice > price ? 'text-emerald-400' : 'text-rose-400'}`}>
-                    ({((stock.postPrice - price) / price * 100).toFixed(2)}%)
+          {/* 가격 정보 상세 표시 (Regular + Post/Pre) */}
+          <div className="flex flex-col items-start mt-1 gap-0.5 min-h-[20px]">
+            {/* 1. 정규장 종가 (시간외 가격이 있거나 메인이 Regular가 아닐 때 표시) */}
+            {(stock.postPrice > 0 || stock.prePrice > 0) && (
+              <div className="text-[10px] font-mono text-slate-500 flex items-center gap-1">
+                <span className="opacity-70 uppercase font-bold tracking-wider">Regular</span>
+                <span className="font-bold">{(stock.regularClose || price).toLocaleString(undefined, { minimumFractionDigits: decimalPlaces, maximumFractionDigits: decimalPlaces })}</span>
+              </div>
+            )}
+
+            {/* 2. Post Market (있으면 표시) */}
+            {stock.postPrice > 0 && (
+              <div className={`text-[10px] font-mono flex items-center gap-1 ${stock.postPrice === price ? 'text-white font-black' : 'text-purple-400'}`}>
+                <span className="opacity-70 uppercase font-bold tracking-wider">After</span>
+                <span className="font-bold">{stock.postPrice.toLocaleString(undefined, { minimumFractionDigits: decimalPlaces, maximumFractionDigits: decimalPlaces })}</span>
+                {stock.regularClose > 0 && stock.postPrice !== stock.regularClose && (
+                  <span className={`text-[9px] ${stock.postPrice > stock.regularClose ? 'text-emerald-400' : 'text-rose-400'}`}>
+                    ({((stock.postPrice - stock.regularClose) / stock.regularClose * 100).toFixed(2)}%)
                   </span>
-                </div>
-              )}
-              {stock.prePrice && stock.prePrice !== price && (
-                <div className="text-[10px] font-mono text-amber-400 flex items-center gap-1 animate-pulse">
-                  <span className="opacity-70 uppercase font-bold tracking-wider">Pre</span>
-                  <span className="font-black">{stock.prePrice.toLocaleString(undefined, { minimumFractionDigits: decimalPlaces, maximumFractionDigits: decimalPlaces })}</span>
-                </div>
-              )}
-            </div>
-          )}
+                )}
+              </div>
+            )}
+
+            {/* 3. Pre Market (있으면 표시) */}
+            {stock.prePrice > 0 && (
+              <div className={`text-[10px] font-mono flex items-center gap-1 ${stock.prePrice === price ? 'text-white font-black' : 'text-amber-400'}`}>
+                <span className="opacity-70 uppercase font-bold tracking-wider">Pre</span>
+                <span className="font-bold">{stock.prePrice.toLocaleString(undefined, { minimumFractionDigits: decimalPlaces, maximumFractionDigits: decimalPlaces })}</span>
+              </div>
+            )}
+          </div>
         </div>
         <div className={`text-right font-black text-lg ${change >= 0 ? 'text-rose-500' : 'text-indigo-400'}`}>
           {(change || 0).toFixed(2)}%
