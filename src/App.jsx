@@ -971,10 +971,10 @@ export default function App() {
 function IndexCard({ idx }) {
   if (!idx) return null; // 데이터 없으면 렌더링 안 함
 
-  // 최근 12시간 데이터만 필터링 (선물 지수 등 24시간 시장 대응)
+  // 최근 72시간 데이터만 필터링 (주말 고려)
   const now = Date.now() / 1000;
   const recentHistory = idx.history && Array.isArray(idx.history)
-    ? idx.history.filter(h => h.time > now - (12 * 60 * 60))
+    ? idx.history.filter(h => h.time > now - (72 * 60 * 60)) // 3일
     : [];
 
   // 데이터가 아예 없으면 원본이라도 사용 (안전장치)
@@ -990,7 +990,7 @@ function IndexCard({ idx }) {
         <div>
           <h3 className="text-lg font-black tracking-tighter text-white group-hover:text-indigo-400 transition-colors uppercase leading-tight">{idx.name}</h3>
           <div className="flex items-center gap-2 mt-1">
-            <span className="text-[10px] text-slate-500 font-bold uppercase tracking-widest">Real-time (12H)</span>
+            <span className="text-[10px] text-slate-500 font-bold uppercase tracking-widest">Real-time</span>
             {lastTime && (
               <span className="text-[10px] text-indigo-400 font-mono font-black bg-indigo-500/10 px-1.5 py-0.5 rounded">
                 {new Date(lastTime * 1000).toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit', hour12: false })}
