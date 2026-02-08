@@ -400,6 +400,9 @@ export default function App() {
         regularClose: meta.regularMarketPrice,
         postPrice: meta.postMarketPrice,
         prePrice: meta.preMarketPrice,
+        change: meta.regularMarketChangePercent || 0,
+        postPrice: meta.postMarketPrice,
+        prePrice: meta.preMarketPrice,
         prevClose: prevClose,
         change: prevClose !== 0 ? ((currentPrice - prevClose) / prevClose) * 100 : 0,
         isSimulated: false,
@@ -522,21 +525,34 @@ export default function App() {
     // CORE는 "터치(눌림목)"이므로 20일선 근처여야 함 (예: MA20 * 0.98 ~ 1.02)
     // ALPHA는 "돌파"이므로 20일선 위에 있어야 함
     if (ma20 > 0) {
-      const dist = (currentPrice - ma20) / ma20;
+      // 정규장, Post, Pre 가격 모두 체크
+      const pricesToCheck = [
+        { p: data.price, label: '정규장' },
+        { p: data.postPrice, label: 'After' },
+        { p: data.prePrice, label: 'Pre' }
+      ].filter(item => item.p > 0 && typeof item.p === 'number');
 
-      if (stock.type === 'CORE') {
-        // 눌림목: 20일선 부근 (-2% ~ +2%) 이면서 RSI가 낮을 때
-        if (dist > -0.02 && dist < 0.02) {
-          triggerAlert(stock.name, `✨ [CORE] 20일선 눌림목 터치 (RSI: ${rsi.toFixed(1)}) - 매수 기회?`);
-        }
-      } else if (stock.type === 'LEVERAGE') {
-        // 돌파: 20일선 위에 있고, 전일 고가를 돌파했는가?
-        // 전일 고가 데이터가 없으므로 "오늘 상승폭이 크고 20일선 지지"로 대체 혹은 고가 데이터 fetch 필요
-        // 여기서는 20일선 지지받고 상승 중일 때 알림
-        if (dist > 0 && dist < 0.05 && apiStatus === 'connected') {
-          // 20일선 위 5% 이내에서 상승세
-          if (data.change > 0) {
-            triggerAlert(stock.name, `🚀 [LEV] 20일선 위 상승세 (RSI: ${rsi.toFixed(1)}) - 돌파 확인 요망`);
+      // 중복 알림 방지용 플래그
+      let alertTriggered = false;
+
+      for (const { p, label } of pricesToCheck) {
+        if (alertTriggered) break; // 하나라도 걸리면 종료
+
+        const dist = (p - ma20) / ma20;
+
+        if (stock.type === 'CORE') {
+          // 눌림목: 20일선 부근 (-2% ~ +2%) 이면서 RSI가 낮을 때
+          if (dist > -0.02 && dist < 0.02) {
+            triggerAlert(stock.name, `✨ [CORE/${label}] 20일선 눌림목 터치 (MA20: ${ma20.toFixed(0)}, ${label}: ${p.toFixed(0)})`);
+            alertTriggered = true;
+          }
+        } else if (stock.type === 'LEVERAGE') {
+          // 돌파: 20일선 위에 있고, 전일 고가를 돌파했는가?
+          if (dist > 0 && dist < 0.05 && apiStatus === 'connected') {
+            if (data.change > 0) {
+              triggerAlert(stock.name, `🚀 [LEV/${label}] 20일선 위 상승세 (${label}: ${p.toFixed(2)})`);
+              alertTriggered = true;
+            }
           }
         }
       }
@@ -969,8 +985,11 @@ function IndexCard({ idx }) {
             {changeVal >= 0 ? <TrendingUp className="w-3.5 h-3.5" /> : <TrendingDown className="w-3.5 h-3.5" />}
             {Math.abs(changeVal).toFixed(2)}%
           </div>
+
+
         </div>
       </div>
+
       <div className="mt-8 flex items-center justify-center bg-slate-950/40 rounded-3xl p-6 py-8 border border-slate-800/30">
         <MiniChart data={displayHistory} stroke={idx.stroke} width={220} height={80} />
       </div>
@@ -1089,16 +1108,26 @@ function StockCard({ stock, status }) {
           <p className="text-3xl font-mono font-black text-white tracking-tighter">
             {price > 0 ? price.toLocaleString(undefined, { minimumFractionDigits: decimalPlaces, maximumFractionDigits: decimalPlaces }) : '---'}
           </p>
-          {/* 보조 가격 정보 표시 (24시간 장외 대응) */}
-          {stock.marketState !== 'Regular' && stock.regularClose > 0 && (
-            <p className="text-[10px] text-slate-500 font-mono mt-1">
-              Regular: {stock.regularClose.toLocaleString(undefined, { minimumFractionDigits: decimalPlaces })}
-            </p>
-          )}
-          {stock.marketState === 'Regular' && (stock.postPrice > 0 || stock.prePrice > 0) && (
-            <p className="text-[10px] text-indigo-400 font-mono mt-1 animate-pulse">
-              Ext Total: {(stock.postPrice || stock.prePrice).toLocaleString(undefined, { minimumFractionDigits: decimalPlaces })}
-            </p>
+
+          {/* 시간외 가격 표시 (Post/Pre) - 정규장 가격과 다를 때만 표시 */}
+          {(stock.postPrice || stock.prePrice) && (
+            <div className="flex flex-col items-start mt-1 gap-0.5">
+              {stock.postPrice && stock.postPrice !== price && (
+                <div className="text-[10px] font-mono text-purple-400 flex items-center gap-1 animate-pulse">
+                  <span className="opacity-70 uppercase font-bold tracking-wider">After</span>
+                  <span className="font-black">{stock.postPrice.toLocaleString(undefined, { minimumFractionDigits: decimalPlaces, maximumFractionDigits: decimalPlaces })}</span>
+                  <span className={`text-[9px] ${stock.postPrice > price ? 'text-emerald-400' : 'text-rose-400'}`}>
+                    ({((stock.postPrice - price) / price * 100).toFixed(2)}%)
+                  </span>
+                </div>
+              )}
+              {stock.prePrice && stock.prePrice !== price && (
+                <div className="text-[10px] font-mono text-amber-400 flex items-center gap-1 animate-pulse">
+                  <span className="opacity-70 uppercase font-bold tracking-wider">Pre</span>
+                  <span className="font-black">{stock.prePrice.toLocaleString(undefined, { minimumFractionDigits: decimalPlaces, maximumFractionDigits: decimalPlaces })}</span>
+                </div>
+              )}
+            </div>
           )}
         </div>
         <div className={`text-right font-black text-lg ${change >= 0 ? 'text-rose-500' : 'text-indigo-400'}`}>
