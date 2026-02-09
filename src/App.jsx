@@ -115,9 +115,19 @@ const PORTFOLIO_LIST = [
 ];
 
 const MARKET_INDICES = [
-  { id: 'K200F', name: '코스피 200 선물', symbol: 'KRW=X', base: 365.5, color: 'text-rose-400', stroke: '#fb7185' }, // 대용: KRW=X (환율) 혹은 ^KS200 (지수). 선물 데이터 ES=F 처럼 매핑
-  { id: 'NDX', name: '나스닥 100 선물', symbol: 'NQ=F', base: 18250.0, color: 'text-indigo-400', stroke: '#818cf8' },
-  { id: 'SPXF', name: 'S&P 500 선물', symbol: 'ES=F', base: 5120.0, color: 'text-emerald-400', stroke: '#34d399' }
+  // 실시간 지수 (Actual Indices)
+  { id: 'KOSPI', name: '코스피', symbol: '^KS11', base: 2600.0, color: 'text-rose-400', stroke: '#fb7185' },
+  { id: 'SPX', name: 'S&P 500', symbol: '^GSPC', base: 5200.0, color: 'text-emerald-400', stroke: '#34d399' },
+  { id: 'NDX', name: '나스닥 100', symbol: '^NDX', base: 18500.0, color: 'text-indigo-400', stroke: '#818cf8' },
+  { id: 'BTC', name: '비트코인', symbol: 'BTC-USD', base: 95000.0, color: 'text-amber-500', stroke: '#f59e0b' },
+  { id: 'GOLD_SPOT', name: '금 (현물)', symbol: 'XAU=X', base: 2600.0, color: 'text-yellow-400', stroke: '#facc15' },
+  { id: 'SOX', name: '필라델피아 반도체', symbol: '^SOX', base: 5000.0, color: 'text-cyan-400', stroke: '#22d3ee' },
+  { id: 'USD', name: '원/달러 환율', symbol: 'KRW=X', base: 1400.0, color: 'text-slate-400', stroke: '#94a3b8' },
+
+  // 선물 지수 (Futures) - 하단 배치
+  { id: 'SPX_F', name: 'S&P 500 선물', symbol: 'ES=F', base: 5200.0, color: 'text-emerald-600', stroke: '#059669' },
+  { id: 'NDX_F', name: '나스닥 100 선물', symbol: 'NQ=F', base: 18500.0, color: 'text-indigo-600', stroke: '#4f46e5' },
+  { id: 'GOLD_F', name: '금 선물', symbol: 'GC=F', base: 2600.0, color: 'text-yellow-600', stroke: '#ca8a04' }
 ];
 
 const SYMBOLS = {
@@ -170,9 +180,30 @@ const calculateSimpleMA = (history, period = 20) => {
   return sum / period;
 };
 
-// CORS Proxy URL 생성 헬퍼 (Vercel 배포 시, vercel.json rewrites 사용)
+// --- CORS 프록시 유틸리티 (배포 환경 대응) ---
+// --- CORS Proxy 유틸리티 (Vite Proxy & Vercel Rewrites 공용) ---
 const getYahooUrl = (path) => {
   return `/yahoo${path}`;
+};
+
+const fetchWithProxy = async (targetPath) => {
+  try {
+    // 1. 우선 Vercel/Local 프록시 경로 시도 (/yahoo/...)
+    const url = getYahooUrl(targetPath);
+    const res = await fetch(url);
+
+    // Vercel/Local 환경이 맞다면 JSON 응답이 와야 함 (HTML이 오면 Firebase Fallback/404임)
+    const contentType = res.headers.get("content-type");
+    if (res.ok && contentType && contentType.includes("application/json")) {
+      return res;
+    }
+    throw new Error("Local proxy failed or not supported");
+  } catch (e) {
+    // 2. 실패 시 (Firebase 등) 공개 프록시 사용 (Fallback)
+    const targetUrl = `https://query1.finance.yahoo.com${targetPath}`;
+    const backupProxy = `https://api.allorigins.win/raw?url=${encodeURIComponent(targetUrl)}`;
+    return fetch(backupProxy);
+  }
 };
 
 // --- 차트 컴포넌트 ---
@@ -387,9 +418,9 @@ export default function App() {
   // 야후 파이낸스 가격 추출 (로컬 프록시 사용)
   const fetchYahooPrice = async (symbol) => {
     try {
-      // getYahooUrl 헬퍼 사용하여 CORS 우회
-      const url = getYahooUrl(`/v8/finance/chart/${symbol}?interval=1m&range=1d&includePrePost=true`);
-      const response = await fetch(url);
+      // getYahooUrl 삭제 및 fetchWithProxy 직접 호출
+      const response = await fetchWithProxy(`/v8/finance/chart/${symbol}?interval=1m&range=1d&includePrePost=true`);
+
       if (!response.ok) {
         console.error(`Yahoo Finance API failed for ${symbol}: ${response.status}`);
         return null;
@@ -487,8 +518,7 @@ export default function App() {
   const fetchDailyStats = async (symbol) => {
     try {
       // 넉넉하게 2년치 일봉 데이터 요청 (RSI 정확도 극대화 및 정규장 데이터만 사용)
-      const url = getYahooUrl(`/v8/finance/chart/${symbol}?interval=1d&range=2y&includePrePost=false`);
-      const response = await fetch(url);
+      const response = await fetchWithProxy(`/v8/finance/chart/${symbol}?interval=1d&range=2y&includePrePost=false`);
 
       if (!response.ok) {
         console.warn(`Fetch Daily Stats Failed (${symbol}): ${response.status}`);
@@ -546,8 +576,7 @@ export default function App() {
   const fetchTargetPrice = async (symbol) => {
     try {
       // quoteSummary API 사용 (financialData 모듈)
-      const url = getYahooUrl(`/v10/finance/quoteSummary/${symbol}?modules=financialData`);
-      const response = await fetch(url);
+      const response = await fetchWithProxy(`/v10/finance/quoteSummary/${symbol}?modules=financialData`);
       const data = await response.json();
       const finData = data?.quoteSummary?.result?.[0]?.financialData;
 
@@ -1586,8 +1615,7 @@ function PortfolioTable({ triggerAlert }) {
       setLoading(true);
       const results = await Promise.all(PORTFOLIO_LIST.map(async (item) => {
         try {
-          const url = `/yahoo/v8/finance/chart/${item.symbol}?interval=1d&range=3mo&includePrePost=false`;
-          const res = await fetch(url);
+          const res = await fetchWithProxy(`/v8/finance/chart/${item.symbol}?interval=1d&range=3mo&includePrePost=false`);
 
           let price = 0;
           let change = 0;
